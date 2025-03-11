@@ -2,9 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-// const AdminBro = require("admin-bro");
-// const AdminBroExpress = require("@admin-bro/express");
-// const AdminBroMongoose = require("@admin-bro/mongoose");
+const AdminBro = require("admin-bro");
+const AdminBroExpress = require("@admin-bro/express");
+const AdminBroMongoose = require("@admin-bro/mongoose");
 
 const app = express();
 app.use(cors());
@@ -26,10 +26,10 @@ const User = mongoose.model("User", new mongoose.Schema({
 }));
 
 // Setup AdminBro
-// AdminBro.registerAdapter(AdminBroMongoose);
-// const adminBro = new AdminBro({ databases: [mongoose], rootPath: "/admin" });
-// const adminRouter = AdminBroExpress.buildRouter(adminBro);
-// app.use(adminBro.options.rootPath, adminRouter);
+AdminBro.registerAdapter(AdminBroMongoose);
+const adminBro = new AdminBro({ databases: [mongoose], rootPath: "/admin" });
+const adminRouter = AdminBroExpress.buildRouter(adminBro);
+app.use(adminBro.options.rootPath, adminRouter);
 
 // API Route
 app.get("/api/hello", (req, res) => {

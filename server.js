@@ -10,9 +10,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Debugging: Cek apakah `MONGO_URI` terbaca
+console.log("MongoDB URI:", process.env.MONGO_URI);
+
 // Koneksi MongoDB
-mongoose.connect(MONGO_URI)
-.then(() => console.log("Connected to MongoDB"))
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("Connected to MongoDB"))
   .catch(err => console.error("MongoDB Error:", err));
 
 // Contoh Model MongoDB

@@ -1,4 +1,4 @@
-import { connectDB } from "@/lib/mongoose";
+import { connectDB } from "@/lib/supabase";
 import User from "@/models/Users";
 
 export async function GET() {

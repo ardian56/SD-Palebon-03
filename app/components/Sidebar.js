@@ -11,6 +11,9 @@ export default function Sidebar() {
           <Link href="/admin">Dashboard</Link>
         </li>
         <li className="py-2 px-3 hover:bg-blue-700 rounded">
+          <Link href="/admin/news">Berita</Link>
+        </li>
+        <li className="py-2 px-3 hover:bg-blue-700 rounded">
           <Link href="/">Settings</Link>
         </li>
       </ul>

@@ -1,33 +1,39 @@
-import { supabase } from "@/lib/supabase";
-import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export async function GET() {
-  const { data, error } = await supabase.from("news").select("*").order("created_at", { ascending: false });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json(data);
+  const { data, error } = await supabase.from("news").select("*");
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json(data, { status: 200 });
 }
 
-
 export async function POST(req) {
-    const { Judul, Isi, gambar } = await req.json();
-  
-    const { data, error } = await supabase.from("news").insert([{ Judul, Isi, gambar }]);
-  
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  
-    return NextResponse.json(data);
+  const formData = await req.formData();
+  const text = formData.get("text");
+  const isi = formData.get("isi");
+  const image = formData.get("image");
+
+  let imageUrl = null;
+  if (image) {
+    const fileExt = image.name.split(".").pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const { data, error } = await supabase.storage
+      .from("news-images")
+      .upload(fileName, image, { contentType: image.type });
+
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/news-images/${fileName}`;
   }
 
-  
-  export async function DELETE(req) {
-    const { id } = await req.json();
-  
-    const { error } = await supabase.from("news").delete().match({ id });
-  
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  
-    return NextResponse.json({ message: "Berita berhasil dihapus" });
-  }
-  
+  const { data, error } = await supabase
+    .from("news")
+    .insert([{ text, isi, gambar: imageUrl }]);
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json(data[0], { status: 201 });
+}

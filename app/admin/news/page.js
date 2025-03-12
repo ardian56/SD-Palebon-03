@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 export default function NewsPage() {
   const [news, setNews] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newContent, setNewContent] = useState("");
+  const [text, setText] = useState("");
+  const [isi, setIsi] = useState("");
   const [image, setImage] = useState(null);
 
   useEffect(() => {
@@ -17,8 +17,8 @@ export default function NewsPage() {
 
   const addNews = async () => {
     const formData = new FormData();
-    formData.append("title", newTitle);
-    formData.append("content", newContent);
+    formData.append("text", text);
+    formData.append("isi", isi);
     formData.append("image", image);
 
     const res = await fetch("/api/news", {
@@ -30,6 +30,9 @@ export default function NewsPage() {
       const newNews = await res.json();
       setNews([...news, newNews]);
       setShowForm(false);
+      setText("");
+      setIsi("");
+      setImage(null);
     }
   };
 
@@ -40,7 +43,7 @@ export default function NewsPage() {
       {/* Tombol Tambah Berita */}
       <button
         onClick={() => setShowForm(true)}
-        className="bg-blue-500 text-white px-3 py-2 rounded mb-4 hover:bg-blue-600"
+        className="bg-green-500 text-white px-4 py-2 rounded mb-4 hover:bg-green-600"
       >
         + Tambah Berita
       </button>
@@ -52,17 +55,18 @@ export default function NewsPage() {
             type="text"
             placeholder="Judul Berita"
             className="border p-2 w-full mb-2"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
           />
           <textarea
             placeholder="Isi Berita"
             className="border p-2 w-full mb-2"
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
+            value={isi}
+            onChange={(e) => setIsi(e.target.value)}
           />
           <input
             type="file"
+            placeholder="Max Size 3 MB"
             className="border p-2 w-full mb-2"
             onChange={(e) => setImage(e.target.files[0])}
           />
@@ -87,11 +91,11 @@ export default function NewsPage() {
         <tbody>
           {news.map((item) => (
             <tr key={item.id}>
-              <td className="border p-2">{item.title}</td>
-              <td className="border p-2">{item.content}</td>
+              <td className="border p-2">{item.text}</td>
+              <td className="border p-2">{item.isi}</td>
               <td className="border p-2">
-                {item.image_url ? (
-                  <img src={item.image_url} alt="News" className="w-20 h-20 object-cover" />
+                {item.gambar ? (
+                  <img src={item.gambar} alt="News" className="w-20 h-20 object-cover" />
                 ) : (
                   "Tidak ada gambar"
                 )}

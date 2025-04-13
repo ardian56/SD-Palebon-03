@@ -12,6 +12,7 @@ export default function BeritaPage() {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  
 
   useEffect(() => {
     fetchBerita();

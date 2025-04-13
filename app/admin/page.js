@@ -1,14 +1,13 @@
-"use client";
+// app/admin/page.js
 
-import Sidebar from "../components/Sidebar";
-
-export default function AdminPage() {
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-10">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-      </main>
-    </div>
-  );
-}
+export default function AdminDashboard() {
+    return (
+      <div className="p-6">
+        <h1 className="text-3xl font-bold mb-4">Selamat Datang di Admin Panel</h1>
+        <p className="text-lg">
+          Gunakan menu di sebelah kiri untuk mengelola konten berita, galeri, guru, kelas, dan lomba.
+        </p>
+      </div>
+    );
+  }
+  

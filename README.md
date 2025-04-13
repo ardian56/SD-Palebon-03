@@ -1,7 +1,7 @@
 # SD-Palebon-03
 Internship Diskominfo Project - Rebranding Web
 
-Link Source: https://sdnpalebon03.dikdas.semarangkota.go.id/page/berita-sd
+Link Source: https://sdnpalebon03.dikdas.semarangkota.go.id/
 
 
 #

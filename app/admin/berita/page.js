@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Plus, X, Edit, Trash2, Check } from 'lucide-react';
 
 export default function BeritaPage() {
   const [judul, setJudul] = useState('');
   const [isi, setIsi] = useState('');
   const [gambar, setGambar] = useState(null);
   const [data, setData] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   useEffect(() => {
     fetchBerita();
@@ -20,71 +24,187 @@ export default function BeritaPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
-    if (!judul || !isi || !gambar) {
+
+    if (!judul || !isi || (!gambar && !isEditing)) {
       alert("Lengkapi semua data");
       return;
     }
-  
-    const fileExt = gambar.name.split(".").pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `berita/${fileName}`;
-  
-    // 1. Upload gambar ke Supabase
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("images")
-      .upload(filePath, gambar);
-  
-    if (uploadError) {
-      console.error("Upload error:", uploadError.message);
-      return alert("Upload gagal!");
+
+    let imageUrl = null;
+
+    if (gambar) {
+      const fileExt = gambar.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `berita/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("images")
+        .upload(filePath, gambar);
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError.message);
+        return alert("Upload gambar gagal!");
+      }
+
+      const { data: urlData, error: urlError } = supabase.storage
+        .from("images")
+        .getPublicUrl(filePath);
+
+      if (urlError) {
+        console.error("URL error:", urlError.message);
+        return alert("Gagal ambil URL gambar!");
+      }
+
+      imageUrl = urlData.publicUrl;
     }
-  
-    // 2. Ambil URL publik gambar
-    const { data: urlData } = supabase.storage.from("images").getPublicUrl(filePath);
-    const imageUrl = urlData.publicUrl;
-  
-    // 3. Simpan data ke tabel 'berita'
-    const { error: insertError } = await supabase.from("berita").insert({
-      judul,
-      isi,
-      gambar: imageUrl,
-    });
-  
-    if (insertError) {
-      console.error("Insert error:", insertError.message);
-      return alert("Gagal simpan berita!");
+
+    if (isEditing) {
+      const updateData = {
+        judul,
+        isi,
+        gambar: imageUrl || data.find((item) => item.id === editId)?.gambar,
+      };
+      
+
+      const { error } = await supabase.from("berita").update(updateData).eq('id', editId);
+
+      if (error) {
+        console.error("Update error:", error.message);
+        return alert("Gagal mengedit berita!");
+      }
+
+      alert("Berita berhasil diperbarui!");
+    } else {
+      const { error: insertError } = await supabase.from("berita").insert({
+        judul,
+        isi,
+        gambar: imageUrl,
+      });
+
+      if (insertError) {
+        console.error("Insert error:", insertError.message);
+        return alert("Gagal menyimpan berita!");
+      }
+
+      alert("Berita berhasil ditambahkan!");
     }
-  
-    alert("Berita berhasil ditambahkan!");
-    // refresh atau redirect
+
+    resetForm();
+    fetchBerita();
   };
-  
+
+  function resetForm() {
+    setJudul('');
+    setIsi('');
+    setGambar(null);
+    setEditId(null);
+    setIsEditing(false);
+    setShowForm(false);
+  }
 
   async function deleteBerita(id) {
+    const confirm = window.confirm("Yakin ingin menghapus berita ini?");
+    if (!confirm) return;
+
     await supabase.from('berita').delete().eq('id', id);
     fetchBerita();
   }
 
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Tambah Berita</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input className="border p-2 w-full" placeholder="Judul" value={judul} onChange={(e) => setJudul(e.target.value)} />
-        <textarea className="border p-2 w-full" placeholder="Isi" value={isi} onChange={(e) => setIsi(e.target.value)} />
-        <input type="file" onChange={(e) => setGambar(e.target.files[0])} />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Simpan</button>
-      </form>
+  function startEdit(item) {
+    setIsEditing(true);
+    setEditId(item.id);
+    setJudul(item.judul);
+    setIsi(item.isi);
+    setShowForm(true);
+  }
 
-      <h2 className="text-xl font-bold mt-10 mb-4">Daftar Berita</h2>
-      {data.map((item) => (
-        <div key={item.id} className="border p-4 mb-4">
-          <h3 className="text-lg font-semibold">{item.judul}</h3>
-          <img src={item.gambar} alt="" className="w-48 my-2" />
-          <p>{item.isi}</p>
-          <button onClick={() => deleteBerita(item.id)} className="text-red-500 mt-2">Hapus</button>
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold">Manajemen Berita</h2>
+        <button 
+          onClick={() => {
+            setShowForm(!showForm);
+            if (isEditing) resetForm();
+          }} 
+          className={`p-2 rounded-full text-white ${showForm ? 'bg-red-500' : 'bg-green-600'} hover:opacity-80`}
+          title={showForm ? 'Tutup Form' : 'Tambah Berita'}
+        >
+          {showForm ? <X size={20} /> : <Plus size={20} />}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white shadow-md p-6 rounded-lg mb-10 border border-gray-200">
+          <h3 className="text-lg font-semibold mb-4">
+            {isEditing ? 'Edit Berita' : 'Form Tambah Berita'}
+          </h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              className="border p-2 w-full rounded"
+              placeholder="Judul"
+              value={judul}
+              onChange={(e) => setJudul(e.target.value)}
+            />
+            <textarea
+              className="border p-2 w-full rounded"
+              placeholder="Isi"
+              value={isi}
+              onChange={(e) => setIsi(e.target.value)}
+            />
+            <input type="file" onChange={(e) => setGambar(e.target.files[0])} />
+            <div className="flex items-center space-x-2">
+              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                {isEditing ? 'Update' : 'Simpan'}
+              </button>
+              {isEditing && (
+                <button onClick={resetForm} type="button" className="text-sm text-gray-500 underline">
+                  Batal Edit
+                </button>
+              )}
+            </div>
+          </form>
         </div>
-      ))}
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white border rounded-lg overflow-hidden shadow-sm text-sm">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="px-4 py-3 border">Judul</th>
+              <th className="px-4 py-3 border">Isi</th>
+              <th className="px-4 py-3 border">Gambar</th>
+              <th className="px-4 py-3 border text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 && (
+              <tr>
+                <td colSpan="4" className="text-center py-4">Belum ada berita.</td>
+              </tr>
+            )}
+            {data.map((item, index) => (
+              <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-4 py-3 border align-top">{item.judul}</td>
+                <td className="px-4 py-3 border align-top">{item.isi}</td>
+                <td className="px-4 py-3 border text-center">
+                  <img src={item.gambar} alt="gambar" className="w-24 mx-auto rounded" />
+                </td>
+                <td className="px-4 py-3 border text-center">
+                  <div className="flex justify-center space-x-2">
+                    <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-500 hover:text-yellow-600">
+                      <Edit size={18} />
+                    </button>
+                    <button onClick={() => deleteBerita(item.id)} title="Hapus" className="text-red-600 hover:text-red-700">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

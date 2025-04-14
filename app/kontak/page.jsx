@@ -72,7 +72,6 @@ const Kontak = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

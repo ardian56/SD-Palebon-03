@@ -14,6 +14,7 @@ import {
   Trophy,
   LogOut,
   X,
+  FileText,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -83,6 +84,7 @@ export default function AdminLayout({ children }) {
           {[
             { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
             { name: 'Berita', href: '/admin/berita', icon: <Newspaper className="h-4 w-4" /> },
+            { name: 'Warta', href: '/admin/warta', icon: <FileText className="h-4 w-4" /> },
             { name: 'Galeri', href: '/admin/galeri', icon: <Image className="h-4 w-4" /> },
             { name: 'Profil Guru', href: '/admin/guru', icon: <Users className="h-4 w-4" /> },
             { name: 'Siswa', href: '/admin/kelas', icon: <BookOpen className="h-4 w-4" /> },

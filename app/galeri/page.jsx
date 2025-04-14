@@ -10,7 +10,7 @@ const Galery = () => {
     fetchGaleri();
   }, []);
 
-  // Mengambil data galeri dari Supabase
+
   async function fetchGaleri() {
     const { data } = await supabase.from('galeri').select('*').order('tanggal', { ascending: false });
     setData(data);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, X, Edit, Trash2, Check } from 'lucide-react';
+import { Plus, X, Edit, Trash2, Newspaper } from 'lucide-react';
 
 export default function BeritaPage() {
   const [judul, setJudul] = useState('');
@@ -12,7 +12,6 @@ export default function BeritaPage() {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  
 
   useEffect(() => {
     fetchBerita();
@@ -25,68 +24,31 @@ export default function BeritaPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!judul || !isi || (!gambar && !isEditing)) {
       alert("Lengkapi semua data");
       return;
     }
 
     let imageUrl = null;
-
     if (gambar) {
       const fileExt = gambar.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `berita/${fileName}`;
+      const { error: uploadError } = await supabase.storage.from("images").upload(filePath, gambar);
+      if (uploadError) return alert("Upload gambar gagal!");
 
-      const { error: uploadError } = await supabase.storage
-        .from("images")
-        .upload(filePath, gambar);
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError.message);
-        return alert("Upload gambar gagal!");
-      }
-
-      const { data: urlData, error: urlError } = supabase.storage
-        .from("images")
-        .getPublicUrl(filePath);
-
-      if (urlError) {
-        console.error("URL error:", urlError.message);
-        return alert("Gagal ambil URL gambar!");
-      }
-
+      const { data: urlData } = supabase.storage.from("images").getPublicUrl(filePath);
       imageUrl = urlData.publicUrl;
     }
 
     if (isEditing) {
-      const updateData = {
-        judul,
-        isi,
+      await supabase.from("berita").update({
+        judul, isi,
         gambar: imageUrl || data.find((item) => item.id === editId)?.gambar,
-      };
-      
-
-      const { error } = await supabase.from("berita").update(updateData).eq('id', editId);
-
-      if (error) {
-        console.error("Update error:", error.message);
-        return alert("Gagal mengedit berita!");
-      }
-
+      }).eq('id', editId);
       alert("Berita berhasil diperbarui!");
     } else {
-      const { error: insertError } = await supabase.from("berita").insert({
-        judul,
-        isi,
-        gambar: imageUrl,
-      });
-
-      if (insertError) {
-        console.error("Insert error:", insertError.message);
-        return alert("Gagal menyimpan berita!");
-      }
-
+      await supabase.from("berita").insert({ judul, isi, gambar: imageUrl });
       alert("Berita berhasil ditambahkan!");
     }
 
@@ -104,9 +66,7 @@ export default function BeritaPage() {
   }
 
   async function deleteBerita(id) {
-    const confirm = window.confirm("Yakin ingin menghapus berita ini?");
-    if (!confirm) return;
-
+    if (!confirm("Yakin ingin menghapus berita ini?")) return;
     await supabase.from('berita').delete().eq('id', id);
     fetchBerita();
   }
@@ -120,15 +80,18 @@ export default function BeritaPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Manajemen Berita</h2>
-        <button 
+    <div className="p-4 sm:p-6 text-white bg-[#111] min-h-screen">
+      <div className="flex items-center justify-between mb-6">
+      <Newspaper size={24} className="text-orange-400" />
+        <h2 className="text-3xl font-semibold text-white tracking-wide">
+          Berita
+        </h2>
+        <button
           onClick={() => {
             setShowForm(!showForm);
             if (isEditing) resetForm();
-          }} 
-          className={`p-2 rounded-full text-white ${showForm ? 'bg-red-500' : 'bg-green-600'} hover:opacity-80`}
+          }}
+          className={`p-2 rounded-full ${showForm ? 'bg-red-600' : 'bg-orange-500'} hover:opacity-80 text-white`}
           title={showForm ? 'Tutup Form' : 'Tambah Berita'}
         >
           {showForm ? <X size={20} /> : <Plus size={20} />}
@@ -136,30 +99,34 @@ export default function BeritaPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white shadow-md p-6 rounded-lg mb-10 border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">
+        <div className="bg-[#1a1a1a] border border-gray-700 p-4 rounded-xl mb-8 shadow-sm">
+          <h3 className="text-lg font-medium text-orange-400 mb-3">
             {isEditing ? 'Edit Berita' : 'Form Tambah Berita'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
-              className="border p-2 w-full rounded"
+              className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
               placeholder="Judul"
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
             />
             <textarea
-              className="border p-2 w-full rounded"
+              className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
               placeholder="Isi"
               value={isi}
               onChange={(e) => setIsi(e.target.value)}
             />
-            <input type="file" onChange={(e) => setGambar(e.target.files[0])} />
-            <div className="flex items-center space-x-2">
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            <input
+              type="file"
+              onChange={(e) => setGambar(e.target.files[0])}
+              className="text-sm text-gray-300"
+            />
+            <div className="flex items-center gap-3">
+              <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
                 {isEditing ? 'Update' : 'Simpan'}
               </button>
               {isEditing && (
-                <button onClick={resetForm} type="button" className="text-sm text-gray-500 underline">
+                <button onClick={resetForm} type="button" className="text-sm text-gray-400 underline">
                   Batal Edit
                 </button>
               )}
@@ -168,35 +135,35 @@ export default function BeritaPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded-lg overflow-hidden shadow-sm text-sm">
-          <thead className="bg-gray-100 text-gray-700">
+      <div className="overflow-x-auto rounded-lg shadow-sm">
+        <table className="min-w-full text-sm bg-[#1a1a1a] border border-gray-700">
+          <thead className="bg-[#222] text-orange-400">
             <tr>
-              <th className="px-4 py-3 border">Judul</th>
-              <th className="px-4 py-3 border">Isi</th>
-              <th className="px-4 py-3 border">Gambar</th>
-              <th className="px-4 py-3 border text-center">Aksi</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Judul</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Isi</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Gambar</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan="4" className="text-center py-4">Belum ada berita.</td>
+                <td colSpan="4" className="text-center text-gray-400 py-4">Belum ada berita.</td>
               </tr>
             )}
             {data.map((item, index) => (
-              <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-4 py-3 border align-top">{item.judul}</td>
-                <td className="px-4 py-3 border align-top">{item.isi}</td>
-                <td className="px-4 py-3 border text-center">
-                  <img src={item.gambar} alt="gambar" className="w-24 mx-auto rounded" />
+              <tr key={item.id} className={index % 2 === 0 ? 'bg-[#1a1a1a]' : 'bg-[#181818]'}>
+                <td className="px-4 py-3 border border-gray-700 align-top">{item.judul}</td>
+                <td className="px-4 py-3 border border-gray-700 align-top">{item.isi}</td>
+                <td className="px-4 py-3 border border-gray-700 text-center">
+                  <img src={item.gambar} alt="gambar" className="w-20 mx-auto rounded" />
                 </td>
-                <td className="px-4 py-3 border text-center">
-                  <div className="flex justify-center space-x-2">
-                    <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-500 hover:text-yellow-600">
+                <td className="px-4 py-3 border border-gray-700 text-center">
+                  <div className="flex justify-center gap-2">
+                    <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-400 hover:text-yellow-300">
                       <Edit size={18} />
                     </button>
-                    <button onClick={() => deleteBerita(item.id)} title="Hapus" className="text-red-600 hover:text-red-700">
+                    <button onClick={() => deleteBerita(item.id)} title="Hapus" className="text-red-500 hover:text-red-400">
                       <Trash2 size={18} />
                     </button>
                   </div>

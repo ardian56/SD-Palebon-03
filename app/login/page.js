@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { BookOpen } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,46 +25,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-pink-100 px-4">
-      <div className="bg-white shadow-md rounded-xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md space-y-6 border border-gray-200">
-        <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-800">Login Admin</h2>
+    <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] px-4">
+      <div className="bg-gradient-to-br from-[#1a1a1a] via-[#1f1f1f] to-[#111] border border-gray-700 shadow-2xl rounded-2xl px-8 py-10 w-full max-w-md space-y-6">
+        <div className="text-center">
+          <div className="flex justify-center items-center gap-2 mb-2">
+            <BookOpen size={32} className="text-orange-400" />
+            <h2 className="text-3xl font-bold text-white">Admin Panel</h2>
+          </div>
+          <p className="text-sm text-gray-400">Silakan login untuk melanjutkan</p>
+        </div>
 
         {errorMsg && (
-          <p className="text-sm text-red-500 text-center">{errorMsg}</p>
+          <div className="text-sm text-red-500 text-center bg-red-900 bg-opacity-30 border border-red-700 rounded p-2">
+            {errorMsg}
+          </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-600">Email</label>
+            <label className="block text-sm text-gray-300 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@example.com"
-              className="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="you@example.com"
+              className="w-full px-4 py-2 rounded-lg bg-[#222] text-white border border-gray-600 focus:ring-2 focus:ring-orange-500 focus:outline-none"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600">Password</label>
+            <label className="block text-sm text-gray-300 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 rounded-lg bg-[#222] text-white border border-gray-600 focus:ring-2 focus:ring-orange-500 focus:outline-none"
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition duration-200"
+            className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition duration-200 shadow-md"
           >
             Masuk
           </button>
         </form>
+
       </div>
     </div>
   );

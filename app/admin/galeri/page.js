@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, X, Edit, Trash2 } from 'lucide-react';
+import { Plus, X, Edit, Trash2, Image } from 'lucide-react';
 
 export default function GaleriPage() {
   const [judul, setJudul] = useState('');
@@ -38,56 +38,21 @@ export default function GaleriPage() {
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `galeri/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("images")
-        .upload(filePath, gambar);
+      const { error: uploadError } = await supabase.storage.from("images").upload(filePath, gambar);
+      if (uploadError) return alert("Upload gambar gagal!");
 
-      if (uploadError) {
-        console.error("Upload error:", uploadError.message);
-        return alert("Upload gambar gagal!");
-      }
-
-      const { data: urlData, error: urlError } = supabase.storage
-        .from("images")
-        .getPublicUrl(filePath);
-
-      if (urlError) {
-        console.error("URL error:", urlError.message);
-        return alert("Gagal ambil URL gambar!");
-      }
-
+      const { data: urlData } = supabase.storage.from("images").getPublicUrl(filePath);
       imageUrl = urlData.publicUrl;
     }
 
     if (isEditing) {
-      const updateData = {
-        judul,
-        tanggal,
-        isi,
+      await supabase.from("galeri").update({
+        judul, tanggal, isi,
         gambar: imageUrl || data.find((item) => item.id === editId)?.gambar,
-      };
-
-      const { error } = await supabase.from("galeri").update(updateData).eq('id', editId);
-
-      if (error) {
-        console.error("Update error:", error.message);
-        return alert("Gagal mengedit galeri!");
-      }
-
+      }).eq('id', editId);
       alert("Data galeri berhasil diperbarui!");
     } else {
-      const { error: insertError } = await supabase.from("galeri").insert({
-        judul,
-        tanggal,
-        isi,
-        gambar: imageUrl,
-      });
-
-      if (insertError) {
-        console.error("Insert error:", insertError.message);
-        return alert("Gagal menyimpan galeri!");
-      }
-
+      await supabase.from("galeri").insert({ judul, tanggal, isi, gambar: imageUrl });
       alert("Galeri berhasil ditambahkan!");
     }
 
@@ -106,9 +71,7 @@ export default function GaleriPage() {
   }
 
   async function deleteGaleri(id) {
-    const confirm = window.confirm("Yakin ingin menghapus data ini?");
-    if (!confirm) return;
-
+    if (!confirm("Yakin ingin menghapus data ini?")) return;
     await supabase.from('galeri').delete().eq('id', id);
     fetchGaleri();
   }
@@ -123,15 +86,18 @@ export default function GaleriPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Manajemen Galeri</h2>
-        <button 
+    <div className="p-4 sm:p-6 text-white bg-[#111] min-h-screen">
+      <div className="flex items-center justify-between mb-6">
+        <Image size={24} className="text-orange-400" />
+        <h2 className="text-3xl font-semibold text-white tracking-wide">
+          Galeri
+        </h2>
+        <button
           onClick={() => {
             setShowForm(!showForm);
             if (isEditing) resetForm();
-          }} 
-          className={`p-2 rounded-full text-white ${showForm ? 'bg-red-500' : 'bg-green-600'} hover:opacity-80`}
+          }}
+          className={`p-2 rounded-full ${showForm ? 'bg-red-600' : 'bg-orange-500'} hover:opacity-80 text-white`}
           title={showForm ? 'Tutup Form' : 'Tambah Galeri'}
         >
           {showForm ? <X size={20} /> : <Plus size={20} />}
@@ -139,36 +105,40 @@ export default function GaleriPage() {
       </div>
 
       {showForm && (
-        <div className="bg-white shadow-md p-6 rounded-lg mb-10 border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">
+        <div className="bg-[#1a1a1a] border border-gray-700 p-4 rounded-xl mb-8 shadow-sm">
+          <h3 className="text-lg font-medium text-orange-400 mb-3">
             {isEditing ? 'Edit Galeri' : 'Form Tambah Galeri'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
-              className="border p-2 w-full rounded"
+              className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
               placeholder="Judul"
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
             />
             <input
               type="date"
-              className="border p-2 w-full rounded"
+              className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
               value={tanggal}
               onChange={(e) => setTanggal(e.target.value)}
             />
             <textarea
-              className="border p-2 w-full rounded"
+              className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
               placeholder="Isi Singkat"
               value={isi}
               onChange={(e) => setIsi(e.target.value)}
             />
-            <input type="file" onChange={(e) => setGambar(e.target.files[0])} />
-            <div className="flex items-center space-x-2">
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            <input
+              type="file"
+              onChange={(e) => setGambar(e.target.files[0])}
+              className="text-sm text-gray-300"
+            />
+            <div className="flex items-center gap-3">
+              <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
                 {isEditing ? 'Update' : 'Simpan'}
               </button>
               {isEditing && (
-                <button onClick={resetForm} type="button" className="text-sm text-gray-500 underline">
+                <button onClick={resetForm} type="button" className="text-sm text-gray-400 underline">
                   Batal Edit
                 </button>
               )}
@@ -177,37 +147,37 @@ export default function GaleriPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded-lg overflow-hidden shadow-sm text-sm">
-          <thead className="bg-gray-100 text-gray-700">
+      <div className="overflow-x-auto rounded-lg shadow-sm">
+        <table className="min-w-full text-sm bg-[#1a1a1a] border border-gray-700">
+          <thead className="bg-[#222] text-orange-400">
             <tr>
-              <th className="px-4 py-3 border">Judul</th>
-              <th className="px-4 py-3 border">Isi</th>
-              <th className="px-4 py-3 border">Tanggal</th>
-              <th className="px-4 py-3 border">Gambar</th>
-              <th className="px-4 py-3 border text-center">Aksi</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Judul</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Isi</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Tanggal</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Gambar</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 && (
               <tr>
-                <td colSpan="5" className="text-center py-4">Belum ada data galeri.</td>
+                <td colSpan="5" className="text-center text-gray-400 py-4">Belum ada data galeri.</td>
               </tr>
             )}
             {data.map((item, index) => (
-              <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-4 py-3 border align-top">{item.judul}</td>
-                <td className="px-4 py-3 border align-top">{item.isi}</td>
-                <td className="px-4 py-3 border align-top">{item.tanggal}</td>
-                <td className="px-4 py-3 border text-center">
-                  <img src={item.gambar} alt="gambar" className="w-24 mx-auto rounded" />
+              <tr key={item.id} className={index % 2 === 0 ? 'bg-[#1a1a1a]' : 'bg-[#181818]'}>
+                <td className="px-4 py-3 border border-gray-700 align-top">{item.judul}</td>
+                <td className="px-4 py-3 border border-gray-700 align-top">{item.isi}</td>
+                <td className="px-4 py-3 border border-gray-700 align-top">{item.tanggal}</td>
+                <td className="px-4 py-3 border border-gray-700 text-center">
+                  <img src={item.gambar} alt="gambar" className="w-20 mx-auto rounded" />
                 </td>
-                <td className="px-4 py-3 border text-center">
-                  <div className="flex justify-center space-x-2">
-                    <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-500 hover:text-yellow-600">
+                <td className="px-4 py-3 border border-gray-700 text-center">
+                  <div className="flex justify-center gap-2">
+                    <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-400 hover:text-yellow-300">
                       <Edit size={18} />
                     </button>
-                    <button onClick={() => deleteGaleri(item.id)} title="Hapus" className="text-red-600 hover:text-red-700">
+                    <button onClick={() => deleteGaleri(item.id)} title="Hapus" className="text-red-500 hover:text-red-400">
                       <Trash2 size={18} />
                     </button>
                   </div>

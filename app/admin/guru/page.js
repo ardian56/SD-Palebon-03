@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, X, Edit, Trash2 } from 'lucide-react';
+import { Plus, X, Edit, Trash2, Users } from 'lucide-react';
 
 export default function GuruPage() {
   const [nama, setNama] = useState('');
@@ -18,7 +18,10 @@ export default function GuruPage() {
   }, []);
 
   async function fetchGuru() {
-    const { data } = await supabase.from('guru').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase
+      .from('guru')
+      .select('*')
+      .order('created_at', { ascending: false });
     setData(data);
   }
 
@@ -26,7 +29,7 @@ export default function GuruPage() {
     e.preventDefault();
 
     if (!nama || !jabatan || (!foto && !isEditing)) {
-      alert("Lengkapi semua data");
+      alert('Lengkapi semua data');
       return;
     }
 
@@ -118,46 +121,58 @@ export default function GuruPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Manajemen Guru</h2>
-        <button 
+    <div className="p-4 text-white">
+      <div className="flex justify-between items-center mb-4">
+      <Users size={24} className="text-orange-400" />
+        <h2 className="text-3xl font-semibold text-white tracking-wide">
+          Profil Guru
+        </h2>
+        <button
           onClick={() => {
             setShowForm(!showForm);
             if (isEditing) resetForm();
-          }} 
-          className={`p-2 rounded-full text-white ${showForm ? 'bg-red-500' : 'bg-green-600'} hover:opacity-80`}
-          title={showForm ? 'Tutup Form' : 'Tambah Guru'}
+          }}
+          className={`p-2 rounded-full text-white ${showForm ? 'bg-red-600' : 'bg-orange-600'} hover:opacity-80`}
         >
           {showForm ? <X size={20} /> : <Plus size={20} />}
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-white shadow-md p-6 rounded-lg mb-10 border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">
+        <div className="bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 mb-6">
+          <h3 className="text-lg font-medium text-orange-400 mb-3">
             {isEditing ? 'Edit Guru' : 'Form Tambah Guru'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              className="border p-2 w-full rounded"
-              placeholder="Nama"
-              value={nama}
-              onChange={(e) => setNama(e.target.value)}
-            />
-            <input
-              className="border p-2 w-full rounded"
-              placeholder="Jabatan"
-              value={jabatan}
-              onChange={(e) => setJabatan(e.target.value)}
-            />
-            <input type="file" onChange={(e) => setFoto(e.target.files[0])} />
-            <div className="flex items-center space-x-2">
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            <div>
+              <input
+                className="w-full p-2 rounded bg-[#2b2b2b] text-white border border-gray-600"
+                placeholder="Nama"
+                value={nama}
+                onChange={(e) => setNama(e.target.value)}
+              />
+            </div>
+            <div>
+              <input
+                className="w-full p-2 rounded bg-[#2b2b2b] text-white border border-gray-600"
+                placeholder="Jabatan"
+                value={jabatan}
+                onChange={(e) => setJabatan(e.target.value)}
+              />
+            </div>
+            <div>
+              <input
+                type="file"
+                className="text-sm"
+                onChange={(e) => setFoto(e.target.files[0])}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="submit" className="bg-orange-500 px-4 py-2 rounded text-white hover:bg-orange-600">
                 {isEditing ? 'Update' : 'Simpan'}
               </button>
               {isEditing && (
-                <button onClick={resetForm} type="button" className="text-sm text-gray-500 underline">
+                <button type="button" onClick={resetForm} className="text-sm underline text-gray-400">
                   Batal Edit
                 </button>
               )}
@@ -167,40 +182,41 @@ export default function GuruPage() {
       )}
 
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded-lg overflow-hidden shadow-sm text-sm">
-          <thead className="bg-gray-100 text-gray-700">
+        <table className="min-w-full text-sm border border-gray-700 rounded-lg overflow-hidden">
+          <thead className="bg-[#1a1a1a] text-orange-400">
             <tr>
-              <th className="px-4 py-3 border">Nama</th>
-              <th className="px-4 py-3 border">Jabatan</th>
-              <th className="px-4 py-3 border">Foto</th>
-              <th className="px-4 py-3 border text-center">Aksi</th>
+              <th className="p-3 border-b border-gray-700 text-left">Nama</th>
+              <th className="p-3 border-b border-gray-700 text-left">Jabatan</th>
+              <th className="p-3 border-b border-gray-700 text-center">Foto</th>
+              <th className="p-3 border-b border-gray-700 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 && (
+            {data.length === 0 ? (
               <tr>
-                <td colSpan="4" className="text-center py-4">Belum ada data guru.</td>
+                <td colSpan="4" className="text-center py-4 text-gray-400">Belum ada data guru.</td>
               </tr>
+            ) : (
+              data.map((item, index) => (
+                <tr key={item.id} className={index % 2 === 0 ? 'bg-[#1e1e1e]' : 'bg-[#252525]'}>
+                  <td className="p-3 border-b border-gray-700">{item.nama}</td>
+                  <td className="p-3 border-b border-gray-700">{item.jabatan}</td>
+                  <td className="p-3 border-b border-gray-700 text-center">
+                    <img src={item.foto} alt="foto" className="w-16 h-16 object-cover rounded mx-auto" />
+                  </td>
+                  <td className="p-3 border-b border-gray-700 text-center">
+                    <div className="flex justify-center gap-2">
+                      <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-400 hover:text-yellow-300">
+                        <Edit size={18} />
+                      </button>
+                      <button onClick={() => deleteGuru(item.id)} title="Hapus" className="text-red-500 hover:text-red-400">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
-            {data.map((item, index) => (
-              <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-4 py-3 border align-top">{item.nama}</td>
-                <td className="px-4 py-3 border align-top">{item.jabatan}</td>
-                <td className="px-4 py-3 border text-center">
-                  <img src={item.foto} alt="foto" className="w-20 mx-auto rounded" />
-                </td>
-                <td className="px-4 py-3 border text-center">
-                  <div className="flex justify-center space-x-2">
-                    <button onClick={() => startEdit(item)} title="Edit" className="text-yellow-500 hover:text-yellow-600">
-                      <Edit size={18} />
-                    </button>
-                    <button onClick={() => deleteGuru(item.id)} title="Hapus" className="text-red-600 hover:text-red-700">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>

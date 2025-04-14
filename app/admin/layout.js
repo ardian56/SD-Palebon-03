@@ -85,7 +85,7 @@ export default function AdminLayout({ children }) {
             { name: 'Berita', href: '/admin/berita', icon: <Newspaper className="h-4 w-4" /> },
             { name: 'Galeri', href: '/admin/galeri', icon: <Image className="h-4 w-4" /> },
             { name: 'Profil Guru', href: '/admin/guru', icon: <Users className="h-4 w-4" /> },
-            { name: 'Kelas', href: '/admin/kelas', icon: <BookOpen className="h-4 w-4" /> },
+            { name: 'Siswa', href: '/admin/kelas', icon: <BookOpen className="h-4 w-4" /> },
             { name: 'Lomba', href: '/admin/lomba', icon: <Trophy className="h-4 w-4" /> },
           ].map((item) => (
             <a

@@ -1,101 +1,69 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+export default function Beranda() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="bg-white w-full">
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="carousel w-full mt-30">
+        <div id="slide1" className="carousel-item relative w-full">
+          <img
+            src="/assets/carousel1.jpg"
+            className="w-90% mx-auto rounded-md"
+            alt="carousel 1"
+          />
+          <div className="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between">
+            <a href="#slide4" className="btn btn-circle">❮</a>
+            <a href="#slide2" className="btn btn-circle">❯</a>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div id="slide2" className="carousel-item relative w-full">
+          <img
+            src="/assets/carousel2.png"
+            className="w-90% mx-auto rounded-md"
+            alt="carousel 2"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <div className="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between">
+            <a href="#slide1" className="btn btn-circle">❮</a>
+            <a href="#slide3" className="btn btn-circle">❯</a>
+          </div>
+        </div>
+      </div>
+
+      <div className="contain w-full px-10">
+        <a href="#" className="flex flex-col items-center p-2 mx-auto mt-10 bg-white border border-gray-200 rounded-lg shadow-sm md:flex-row hover:bg-gray-100">
+          <img
+            className="object-cover w-50% rounded-t-lg h-96 md:h-autol md:rounded-none md:rounded-s-lg"
+            src="/assets/kepalaSekolah.jpeg"
+            alt="kepala sekolah"
           />
-          Examples
+          <div className="flex flex-col justify-between p-4 leading-normal">
+            <h5 className="mb-2 text-2xl font-bold tracking-tight text-center text-gray-800">
+              Sambutan Kepala Sekolah
+            </h5>
+            <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">
+              Assalamualaikum Wr. Wb.
+              <br /><br />
+              Puji syukur alhamdulillah senantiasa kami panjatkan ke hadirat Allah SWT, Tuhan Yang Maha Esa atas limpahan karunia dan rahmat-Nya sehingga website SDN Palebon 03, Pedurungan Semarang dapat aktif kembali. Saya menyadari bahwa website sekolah ini sangatlah penting di era global saat ini. Cepatnya perkembangan pengetahuan dan teknologi informasi saat ini tidak dapat dipungkiri bahwa keberadaan website sangatlah penting. Website dapat digunakan sebagai sarana informasi dan komunikasi pihak sekolah dengan siswa, orang tua/wali murid, komite sekolah, alumni, dan stake holder secara luas.
+              Selain memberikan informasi tentang SDN Palebon 03, website ini juga digunakan untuk memfasilitasi civitas academia di SDN Palebon 03 untuk selalu mengembangkan kompetensinya melalui pembuatan website ini. Tentu saja hal ini dilakukan dengan harapan semua stake holder di SDN Palebon 03 untuk dapat mendarma baktikan semua potensi yang ada demi kemajuan dunia pendidikan. Saya percaya apapun bentuk dan sumbangsih yang diberikan jika dilandasi dengan niat yang tulus tanpa mengharapkan imbalan akan menghasilkan generasi penerus bangsa yang lebih siap dan insya Allah merupakan bagian dari ibadah, Aamiin.
+            </p>
+          </div>
         </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
+      </div>
+
+      <div className="contain w-full px-10 mb-20">
+        <a href="#" className="flex flex-col items-center p-2 mx-auto mt-2 bg-white border border-gray-200 rounded-lg shadow-sm md:flex-row hover:bg-gray-100">
+          <div className="flex flex-col justify-between p-4 leading-normal">
+            <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">
+              Dalam sistem Manajemen Berbasis Sekolah (MBS) atau ketatakelolaan sekolah berbasis manajemen, kami berusaha terus meningkatkan kinerja dan profesionalisme demi terwujudnya pelayanan prima dalam cakupan Lembaga Pendidikan SDN Palebon 03. Kami mencoba menerapkan sistem teknologi komputerisasi agar transparansi pengelolaan pendidikan terwujud secara optimal. Tentu saja sebuah sistem akan bermanfaat dan berdaya guna tinggi jika didukung dan direalisasikan oleh semua komponen di SDN Palebon 03, baik sistem manajerial, akademik, pelayanan publik, prestasi, moralitas, dan semua hal yang berinteraksi di dalamnya. Oleh karena itu, saya berharap semua komponen SDN Palebon 03 : PTK, siswa, komite sekolah, orang tua/wali siswa, alumni, dan stake holder lainnya mendukung dan berkontribusi dalam website ini.
+              Akhirnya, kami mengharapkan masukan berupa saran, kritik yang membangun terhadap website ini agar kami terus belajar dan meng-update diri sehingga tampilan, isi, dan mutu website akan terus berkembang lebih baik sekaligus dapat dimanfaatkan dan bermanfaat bagi PTK, siswa, komite sekolah, orang tua/wali siswa, alumni, stake holder berkait, dan masyarakat luas pada umumnya. Aamiin Ya Robbal ‘Alamin.
+              <br /><br />
+              Wassalamualaikum Wr. Wb.
+            </p>
+          </div>
         </a>
-      </footer>
+      </div>
+
+
     </div>
-  );
+  )
 }

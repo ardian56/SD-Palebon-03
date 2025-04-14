@@ -115,6 +115,7 @@ export default function AdminLayout({ children }) {
       <main className="flex-1 bg-[#121212] p-4 md:p-6 overflow-y-auto h-screen">
         {children}
       </main>
+      
     </div>
   );
 }

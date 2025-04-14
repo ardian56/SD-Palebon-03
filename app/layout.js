@@ -1,28 +1,33 @@
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+// File: layout.jsx
+'use client';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { usePathname } from 'next/navigation';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import './globals.css';
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "SD Palebon 03",
-  description: "Web SD Palebon 03 Semarang",
-};
+// Import metadata dari file server-side
+import { metadata } from './metadata';
 
 export default function RootLayout({ children }) {
+  const pathname = usePathname();
+
+  // Daftar halaman yang tidak butuh Navbar & Footer
+  const hiddenRoutes = ['/login', '/admin'];
+
+  // Memeriksa apakah halaman yang sedang diakses membutuhkan layout (Navbar & Footer)
+  const hideLayout = hiddenRoutes.some((path) => pathname.startsWith(path));
+
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="id">
+      <head>
+        <title>{metadata.title}</title>
+        <meta name="description" content={metadata.description} />
+      </head>
+      <body>
+        {!hideLayout && <Navbar />}
         {children}
+        {!hideLayout && <Footer />}
       </body>
     </html>
   );

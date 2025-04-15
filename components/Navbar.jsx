@@ -84,8 +84,8 @@ const Navbar = () => {
                 </svg>
               </button>
               <ul className="absolute left-0 top-[100%] z-10 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition bg-blue-500 text-white rounded-md shadow-lg min-w-[180px] whitespace-nowrap">
-                <li><Link href="/pengumuman/warta" className="block px-4 py-2 hover:bg-blue-600">Warta SD</Link></li>
-                <li><Link href="/pengumuman/berita" className="block px-4 py-2 hover:bg-blue-600">Berita SD</Link></li>
+                <li><Link href="/warta" className="block px-4 py-2 hover:bg-blue-600">Warta SD</Link></li>
+                <li><Link href="/berita" className="block px-4 py-2 hover:bg-blue-600">Berita SD</Link></li>
               </ul>
             </li>
 

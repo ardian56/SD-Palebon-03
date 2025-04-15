@@ -31,7 +31,7 @@ const Galery = () => {
   };
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white min-h-screen">
       <div className="head w-[70%] pt-20 mx-auto">
         <p className="text-4xl font-semibold text-gray-800 text-center mb-5">Galeri</p>
       </div>

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "@tailwindcss/line-clamp": "^0.4.4",
     "lucide-react": "^0.488.0",
     "mongoose": "^8.12.1",
     "next": "15.2.1",

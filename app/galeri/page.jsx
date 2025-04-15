@@ -39,7 +39,7 @@ const Galery = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 px-3 pb-10">
         {data.map((item, i) => (
           <div key={i} className="relative group">
-            <div className="card bg-white rounded-lg shadow-lg overflow-hidden w-full h-48"> 
+            <div className="card bg-white rounded-lg shadow-lg overflow-hidden w-full h-20 md:h-48 relative"> 
               <Image
                 className="object-cover w-full h-full cursor-pointer"
                 src={item.gambar}

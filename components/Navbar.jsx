@@ -5,6 +5,8 @@ import { useState } from 'react'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const [isProfilOpen, setIsProfilOpen] = useState(false)
+  const [isPengumumanOpen, setIsPengumumanOpen] = useState(false)
 
   return (
     <nav className="bg-blue-500 fixed w-full top-0 z-50 shadow-xl">
@@ -32,7 +34,7 @@ const Navbar = () => {
               </Link>
             </li>
 
-            {/* PROFIL DROPDOWN */}
+            {/* PROFIL - Desktop Dropdown */}
             <li className="relative group hidden md:block">
               <button className="flex items-center px-3 text-white hover:text-white">
                 Profil
@@ -47,9 +49,24 @@ const Navbar = () => {
               </ul>
             </li>
 
-            {/* PROFIL - Mobile fallback */}
+            {/* PROFIL - Mobile Dropdown */}
             <li className="md:hidden">
-              <Link href="/profil" className="block py-2 px-3 text-white hover:bg-blue-600">Profil</Link>
+              <button
+                className="flex justify-between w-full py-2 px-3 text-white hover:bg-blue-600"
+                onClick={() => setIsProfilOpen(!isProfilOpen)}
+              >
+                Profil
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isProfilOpen && (
+                <ul className="pl-4">
+                  <li><Link href="/profil" className="block py-2 px-3 text-white hover:bg-blue-600">Profil Sekolah</Link></li>
+                  <li><Link href="/profil/guru" className="block py-2 px-3 text-white hover:bg-blue-600">Profil Guru</Link></li>
+                  <li><Link href="/profil/siswa" className="block py-2 px-3 text-white hover:bg-blue-600">Profil Siswa</Link></li>
+                </ul>
+              )}
             </li>
 
             <li>
@@ -58,7 +75,7 @@ const Navbar = () => {
               </Link>
             </li>
 
-            {/* PENGUMUMAN DROPDOWN */}
+            {/* PENGUMUMAN - Desktop Dropdown */}
             <li className="relative group hidden md:block">
               <button className="flex items-center px-3 text-white hover:text-white">
                 Pengumuman
@@ -72,9 +89,23 @@ const Navbar = () => {
               </ul>
             </li>
 
-            {/* PENGUMUMAN - Mobile fallback */}
+            {/* PENGUMUMAN - Mobile Dropdown */}
             <li className="md:hidden">
-              <Link href="/pengumuman" className="block py-2 px-3 text-white hover:bg-blue-600">Pengumuman</Link>
+              <button
+                className="flex justify-between w-full py-2 px-3 text-white hover:bg-blue-600"
+                onClick={() => setIsPengumumanOpen(!isPengumumanOpen)}
+              >
+                Pengumuman
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isPengumumanOpen && (
+                <ul className="pl-4">
+                  <li><Link href="/pengumuman/warta" className="block py-2 px-3 text-white hover:bg-blue-600">Warta SD</Link></li>
+                  <li><Link href="/pengumuman/berita" className="block py-2 px-3 text-white hover:bg-blue-600">Berita SD</Link></li>
+                </ul>
+              )}
             </li>
 
             <li>

@@ -13,6 +13,7 @@ export default function KelasPage() {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  const kelas_order = getKelasOrder(kelas);
 
   useEffect(() => {
     fetchData();
@@ -23,17 +24,28 @@ export default function KelasPage() {
     setData(data);
   }
 
+  function getKelasOrder(kelas) {
+    const match = kelas.match(/(\d)[A-Z]/); 
+    if (!match) return 999; 
+    const [_, angka] = match;
+    const huruf = kelas.trim().slice(-1); 
+    return parseInt(angka) * 10 + (huruf.charCodeAt(0) - 65);
+  }
+  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nama || !kelas || !gender) return alert('Semua field wajib diisi!');
 
+
     if (isEditing) {
-      await supabase.from('kelas').update({ nama, kelas, gender }).eq('id', editId);
+      await supabase.from('kelas').update({ nama, kelas, gender, kelas_order }).eq('id', editId);
       alert('Data berhasil diperbarui!');
     } else {
-      await supabase.from('kelas').insert({ nama, kelas, gender });
+      await supabase.from('kelas').insert({ nama, kelas, gender, kelas_order });
       alert('Data berhasil ditambahkan!');
     }
+
 
     resetForm();
     fetchData();

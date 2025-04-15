@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useState } from 'react'
 
 const Navbar = () => {
+  const [isOpen, setIsOpen] = useState(false)
+
   return (
     <nav className="bg-blue-500 fixed w-full top-0 z-50 shadow-xl">
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
@@ -12,87 +15,91 @@ const Navbar = () => {
         </Link>
 
         <button
-          data-collapse-toggle="navbar-multi-level"
           type="button"
           className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-white rounded-lg md:hidden hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
-          aria-controls="navbar-multi-level"
-          aria-expanded="false"
+          onClick={() => setIsOpen(!isOpen)}
         >
-          <span className="sr-only">Open main menu</span>
           <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 1h15M1 7h15M1 13h15" />
           </svg>
         </button>
 
-        <div className="hidden w-full md:block md:w-auto" id="navbar-multi-level">
-          <ul className="flex flex-col font-medium p-4 md:p-0 mt-4 border border-blue-400 rounded-lg bg-blue-500 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0">
+        <div className={`${isOpen ? 'block' : 'hidden'} w-full md:flex md:w-auto`} id="navbar-menu">
+          <ul className="flex flex-col md:flex-row font-medium p-4 md:p-0 mt-4 md:mt-0 border border-blue-400 rounded-lg bg-blue-500 md:border-0 md:bg-transparent md:space-x-6 rtl:space-x-reverse">
             <li>
-              <Link href="/" className="block py-2 px-3 text-white bg-blue-700 rounded-sm md:bg-transparent md:text-white md:p-0">
+              <Link href="/" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:hover:text-white md:p-0">
                 Beranda
               </Link>
             </li>
-            <li>
-              <button
-                id="dropdownNavbarLink"
-                data-dropdown-toggle="dropdownNavbar"
-                className="flex items-center justify-between w-full py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:border-0 md:hover:text-white md:p-0 md:w-auto"
-              >
-                Profile
-                <svg className="w-2.5 h-2.5 ms-2.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4" />
+
+            {/* PROFIL DROPDOWN */}
+            <li className="relative group hidden md:block">
+              <button className="flex items-center px-3 text-white hover:text-white">
+                Profil
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div id="dropdownNavbar" className="z-10 hidden font-normal bg-blue-500 divide-y divide-blue-400 rounded-lg shadow-sm w-44">
-                <ul className="py-2 text-sm text-white" aria-labelledby="dropdownLargeButton">
-                  <li>
-                    <Link href="/profil" className="block px-4 py-2 hover:bg-blue-600">
-                      Profile Sekolah
-                    </Link>
-                  </li>
-                  <li>
-                    <button
-                      id="doubleDropdownButton"
-                      data-dropdown-toggle="doubleDropdown"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-blue-600"
-                    >
-                      Dropdown
-                      <svg className="w-2.5 h-2.5 ms-2.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4" />
-                      </svg>
-                    </button>
-                    <div id="doubleDropdown" className="z-10 hidden bg-blue-500 divide-y divide-blue-400 rounded-lg shadow-sm w-44">
-                      <ul className="py-2 text-sm text-white" aria-labelledby="doubleDropdownButton">
-                        <li><a href="#" className="block px-4 py-2 hover:bg-blue-600">Overview</a></li>
-                        <li><a href="#" className="block px-4 py-2 hover:bg-blue-600">My downloads</a></li>
-                        <li><a href="#" className="block px-4 py-2 hover:bg-blue-600">Billing</a></li>
-                        <li><a href="#" className="block px-4 py-2 hover:bg-blue-600">Rewards</a></li>
-                      </ul>
-                    </div>
-                  </li>
-                  <li>
-                    <a href="#" className="block px-4 py-2 hover:bg-blue-600">Earnings</a>
-                  </li>
-                </ul>
-                <div className="py-1">
-                  <a href="#" className="block px-4 py-2 text-sm text-white hover:bg-blue-600">Sign out</a>
-                </div>
-              </div>
+              <ul className="absolute left-0 top-[100%] z-10 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition bg-blue-500 text-white rounded-md shadow-lg min-w-[180px] whitespace-nowrap">
+                <li><Link href="/profil" className="block px-4 py-2 hover:bg-blue-600">Profil Sekolah</Link></li>
+                <li><Link href="/profil/guru" className="block px-4 py-2 hover:bg-blue-600">Profil Guru</Link></li>
+                <li><Link href="/profil/siswa" className="block px-4 py-2 hover:bg-blue-600">Profil Siswa</Link></li>
+              </ul>
+            </li>
+
+            {/* PROFIL - Mobile fallback */}
+            <li className="md:hidden">
+              <Link href="/profil" className="block py-2 px-3 text-white hover:bg-blue-600">Profil</Link>
+            </li>
+
+            <li>
+              <Link href="/galeri" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:p-0">
+                Galeri
+              </Link>
+            </li>
+
+            {/* PENGUMUMAN DROPDOWN */}
+            <li className="relative group hidden md:block">
+              <button className="flex items-center px-3 text-white hover:text-white">
+                Pengumuman
+                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <ul className="absolute left-0 top-[100%] z-10 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition bg-blue-500 text-white rounded-md shadow-lg min-w-[180px] whitespace-nowrap">
+                <li><Link href="/pengumuman/warta" className="block px-4 py-2 hover:bg-blue-600">Warta SD</Link></li>
+                <li><Link href="/pengumuman/berita" className="block px-4 py-2 hover:bg-blue-600">Berita SD</Link></li>
+              </ul>
+            </li>
+
+            {/* PENGUMUMAN - Mobile fallback */}
+            <li className="md:hidden">
+              <Link href="/pengumuman" className="block py-2 px-3 text-white hover:bg-blue-600">Pengumuman</Link>
+            </li>
+
+            <li>
+              <Link href="/lomba" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:p-0">
+                Lomba Siswa
+              </Link>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-white rounded-sm hover:bg-blue-600 md:hover:bg-transparent md:border-0 md:hover:text-white md:p-0">
-                Services
-              </a>
+              <Link href="/ppdb" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:p-0">
+                PPDB
+              </Link>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-white rounded-sm hover:bg-blue-600 md:hover:bg-transparent md:border-0 md:hover:text-white md:p-0">
-                Pricing
-              </a>
+              <Link href="/kontak" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:p-0">
+                Kontak
+              </Link>
             </li>
             <li>
-              <Link href="/kontak" className="block py-2 px-3 text-white rounded-sm hover:bg-blue-600 md:hover:bg-transparent md:border-0 md:hover:text-white md:p-0">
-                Contact
+              <Link href="/pengaduan" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:p-0">
+                Pengaduan
+              </Link>
+            </li>
+            <li>
+              <Link href="/tentang" className="block py-2 px-3 text-white hover:bg-blue-600 md:hover:bg-transparent md:p-0">
+                Tentang
               </Link>
             </li>
           </ul>

@@ -12,10 +12,10 @@ const Kontak = () => {
             {/* Logo Sekolah */}
             <div className="flex justify-center mb-6">
               <Image
-                src="/assets/logo2.png"  // Ganti dengan path logo yang sesuai
+                src="/assets/logo2.png" 
                 alt="Logo Sekolah"
-                width={100} // Sesuaikan ukuran logo
-                height={100} // Sesuaikan ukuran logo
+                width={100}
+                height={100}
                 className="rounded-full"
               />
             </div>

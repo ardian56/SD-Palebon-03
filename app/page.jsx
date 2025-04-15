@@ -71,7 +71,7 @@ export default function Beranda() {
       </div>
 
       {/* Sambutan Manajemen Sekolah */}
-      <div className="contain w-full px-10 mb-20">
+      <div className="contain w-full px-10 pb-10">
         <a href="#" className="flex flex-col items-center p-2 mx-auto mt-2 bg-white border border-gray-200 rounded-lg shadow-sm md:flex-row hover:bg-gray-100">
           <div className="flex flex-col justify-between p-4 leading-normal">
             <p className="mb-3 font-normal text-gray-700 dark:text-gray-400">

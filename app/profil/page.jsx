@@ -8,7 +8,7 @@ const ProfileSekolah = () => {
 
       <div className="pt-10">
         <Image
-          src="/assets/logo.png" 
+          src="/assets/logo.png"
           alt="Logo Sekolah"
           className="mx-auto"
           width={150}
@@ -102,14 +102,20 @@ const ProfileSekolah = () => {
             [&::-webkit-scrollbar-track]:rounded-xl
             [&::-webkit-scrollbar-track]:bg-slate-100"
           >
-            <p className="text-slate-600 leading-normal font-light mb-4 max-w-lg text-left whitespace-pre-line">
-1. Menyelenggarakan pembelajaran dengan menanamkan nilai-nilai keagamaan dan akhlak mulia.  
-2. Meningkatkan kemampuan literasi, numerasi, dan partisipasi kegiatan.  
-3. Menumbuhkan nilai religious, nasionalis, mandiri, gotong royong.  
-4. Mengaktualisasikan karya dan bakat secara nyata.  
-5. Menumbuhkan semangat kompetitif yang sportif.  
-6. Peduli lingkungan dengan meningkatkan sarana prasarana yang bersih dan nyaman.
+            <p className="text-slate-600 leading-relaxed font-light mb-4 max-w-lg text-left whitespace-pre-line space-y-2">
+              1. Menyelenggarakan pembelajaran dengan menanamkan nilai-nilai keagamaan dan akhlak mulia.
+              <br />
+              2. Meningkatkan kemampuan literasi, numerasi, dan partisipasi kegiatan.
+              <br />
+              3. Menumbuhkan nilai religious, nasionalis, mandiri, gotong royong.
+              <br />
+              4. Mengaktualisasikan karya dan bakat secara nyata.
+              <br />
+              5. Menumbuhkan semangat kompetitif yang sportif.
+              <br />
+              6. Peduli lingkungan dengan meningkatkan sarana prasarana yang bersih dan nyaman.
             </p>
+
           </div>
         </div>
       </div>

@@ -43,7 +43,15 @@ const page = () => {
           </div>
         </div>
         
-        <button  className='p-2 bg-red-400 text-sm rounded mx-auto flex'>Daftar Sekarang</button>
+        <a 
+          href="https://ppid.semarangkota.go.id/ppdb-kota-semarang-tahun-ajara-2024/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="p-2 bg-red-400 text-sm rounded mx-auto flex w-max text-white"
+        >
+          Daftar Sekarang
+        </a>
+
     </div>
   )
 }

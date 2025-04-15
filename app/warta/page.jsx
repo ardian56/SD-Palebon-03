@@ -24,7 +24,9 @@ const Warta = () => {
   }, [])
 
   return (
-    <div className="w-full min-h-screen bg-white py-10">
+    
+    <div className="w-full min-h-screen py-10 bg-white/90 backdrop-blur-md px-4 pt-20 pb-20 text-center">
+      <h1 className="text-4xl font-bold  text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">Warta</h1>
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
         {wartaList.map((warta, idx) => (
           <div

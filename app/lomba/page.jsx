@@ -13,7 +13,7 @@ const VideoCard = ({ video }) => {
     const embedUrl = `https://www.youtube.com/embed/${youtubeID}`
 
     return (
-        <div className="flex justify-evenly my-4">
+        <div className="flex justify-evenly my-4 ">
             <div className="rounded-lg shadow-lg bg-white max-w-sm border border-gray-300">
                 <div className="w-full aspect-video">
                     {youtubeID ? (
@@ -67,11 +67,11 @@ const Lomba = () => {
     }, {})
 
     return (
-        <div className="w-full bg-white min-h-screen">
+        <div className="w-full bg-white/90 backdrop-blur-md min-h-screen">
             {Object.entries(grouped).map(([namaLomba, videos]) => (
                 <div key={namaLomba}>
-                    <div className="w-1/3 mx-auto pt-20 mb-10">
-                        <h3 className="text-gray-500 border-b border-gray-500 text-2xl font-bold text-center pb-2">
+                    <div className="w-1/3 mx-auto pt-20 mb-10 text-center">
+                        <h3 className="text-red-600 border-b text-2xl font-bold  border-slate-300 mb-10 inline-block pb-2">
                             {namaLomba.toUpperCase()}
                         </h3>
                     </div>

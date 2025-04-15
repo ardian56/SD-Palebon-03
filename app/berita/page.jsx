@@ -32,8 +32,8 @@ const Berita = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-white px-4 pt-20 pb-20">
-      <h1 className="text-3xl font-bold text-center text-gray-800 mb-10">Berita</h1>
+    <div className="w-full min-h-screen bg-white/90 backdrop-blur-md px-4 pt-20 pb-20 text-center">
+      <h1 className="text-4xl font-bold  text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">Berita</h1>
 
       <div className="flex flex-wrap gap-6 justify-center">
         {berita.map((item, index) => (

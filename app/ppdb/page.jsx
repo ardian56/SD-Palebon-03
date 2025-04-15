@@ -51,7 +51,7 @@ const page = () => {
         >
           Daftar Sekarang
         </a>
-
+      <div className="w-full h-10"></div>
     </div>
   )
 }

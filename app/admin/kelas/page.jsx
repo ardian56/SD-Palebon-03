@@ -19,7 +19,7 @@ export default function KelasPage() {
   }, []);
 
   async function fetchData() {
-    const { data } = await supabase.from('kelas').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('kelas').select('*').order('kelas_order', { ascending: true });
     setData(data);
   }
 

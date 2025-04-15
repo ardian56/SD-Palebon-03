@@ -1,12 +1,25 @@
 'use client';
 
+import Image from 'next/image';
+import { Mail, MapPin, Phone } from 'lucide-react';
+
 const Kontak = () => {
   return (
     <div className="w-full bg-white min-h-screen">
-
       <section className="bg-white pt-20">
         <div className="container px-6 py-12 mx-auto">
           <div>
+            {/* Logo Sekolah */}
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/assets/logo2.png"  // Ganti dengan path logo yang sesuai
+                alt="Logo Sekolah"
+                width={100} // Sesuaikan ukuran logo
+                height={100} // Sesuaikan ukuran logo
+                className="rounded-full"
+              />
+            </div>
+
             <h1 className="mt-2 text-2xl font-semibold text-gray-800 md:text-3xl border-b border-gray-300">
               Kontak Kami
             </h1>
@@ -19,9 +32,7 @@ const Kontak = () => {
               {/* Email */}
               <div className="border rounded-md shadow p-3">
                 <span className="inline-block p-3 text-blue-500 rounded-full bg-blue-100/80">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25...Z" />
-                  </svg>
+                  <Mail className="w-5 h-5" />
                 </span>
                 <h2 className="mt-4 text-base font-medium text-gray-800">Email</h2>
                 <p className="mt-2 text-sm text-gray-500">Hubungi email kami dibawah ini.</p>
@@ -31,9 +42,7 @@ const Kontak = () => {
               {/* Alamat */}
               <div className="border rounded-md shadow p-3">
                 <span className="inline-block p-3 text-blue-500 rounded-full bg-blue-100/80">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0...Z" />
-                  </svg>
+                  <MapPin className="w-5 h-5" />
                 </span>
                 <h2 className="mt-4 text-base font-medium text-gray-800">Alamat</h2>
                 <p className="mt-2 text-sm text-blue-500">
@@ -44,9 +53,7 @@ const Kontak = () => {
               {/* Telepon */}
               <div className="border rounded-md shadow p-3">
                 <span className="inline-block p-3 text-blue-500 rounded-full bg-blue-100/80">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284...Z" />
-                  </svg>
+                  <Phone className="w-5 h-5" />
                 </span>
                 <h2 className="mt-4 text-base font-medium text-gray-800">Telepon</h2>
                 <p className="mt-2 text-sm text-gray-500">Senin - Jumat 08.00 - 17.00 WIB</p>
@@ -71,7 +78,6 @@ const Kontak = () => {
           </div>
         </div>
       </section>
-
     </div>
   );
 };

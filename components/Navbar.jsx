@@ -4,7 +4,7 @@ import Image from 'next/image'
 
 const Navbar = () => {
   return (
-    <nav className="bg-blue-500 fixed w-full top-0 z-99 shadow-xl">
+    <nav className="bg-blue-500 fixed w-full top-0 z-50 shadow-xl">
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
         <Link href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <Image src="/assets/logo2.png" width={32} height={32} className="h-8 w-8 rounded-full" alt="Logo SD Palebon 03" />

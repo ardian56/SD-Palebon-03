@@ -43,7 +43,8 @@ const PengaduanPage = () => {
     const { data, error } = await supabase
       .from('pengaduan')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(4);
 
     if (!error) {
       setAduanList(data);

@@ -114,6 +114,7 @@ export default function Navbar() {
               <li><Link href="/lomba" className="hover:text-red-500">Lomba Siswa</Link></li>
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
+              <li><Link href="/pengaduan" className="hover:text-red-500">Pengaduan</Link></li>
             </ul>
           </div>
 
@@ -140,6 +141,7 @@ export default function Navbar() {
                   <li><Link href="/profil" className="block px-4 py-2 hover:text-red-800">Profil Sekolah</Link></li>
                   <li><Link href="/guru" className="block px-4 py-2 hover:text-red-800">Profil Guru</Link></li>
                   <li><Link href="/siswa" className="block px-4 py-2 hover:text-red-800">Profil Siswa</Link></li>
+                  
                 </ul>
               </li>
 

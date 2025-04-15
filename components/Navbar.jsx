@@ -10,7 +10,6 @@ export default function Navbar() {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const DownArrowIcon = ({ isOpen = false }) => (
-
     <svg
       xmlns="http://www.w3.org/2000/svg"
       className={`w-4 h-4 ml-1 transform transition-transform duration-300 ${
@@ -36,18 +35,27 @@ export default function Navbar() {
             SDN PALEBON 03
           </Link>
 
-          {/* Mobile toggle */}
+          {/* Mobile toggle with animation */}
           <div className="lg:hidden">
-            <button onClick={toggleMobileMenu}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-8 h-8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+            <button
+              onClick={toggleMobileMenu}
+              className="relative w-8 h-8 focus:outline-none flex flex-col justify-center items-center"
+            >
+              <span
+                className={`block w-8 h-0.5 bg-slate-800 transform transition duration-300 ease-in-out ${
+                  isMobileMenuOpen ? "rotate-45 translate-y-1.5" : ""
+                }`}
+              />
+              <span
+                className={`block w-8 h-0.5 bg-slate-800 my-1 transition-all duration-300 ease-in-out ${
+                  isMobileMenuOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`block w-8 h-0.5 bg-slate-800 transform transition duration-300 ease-in-out ${
+                  isMobileMenuOpen ? "-rotate-45 -translate-y-1.5" : ""
+                }`}
+              />
             </button>
           </div>
 
@@ -130,8 +138,8 @@ export default function Navbar() {
                 </button>
                 <ul className="absolute left-0 top-[110%] bg-white shadow-md rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 w-48">
                   <li><Link href="/profil" className="block px-4 py-2 hover:text-red-800">Profil Sekolah</Link></li>
-                  <li><Link href="/profil/guru" className="block px-4 py-2 hover:text-red-800">Profil Guru</Link></li>
-                  <li><Link href="/profil/siswa" className="block px-4 py-2 hover:text-red-800">Profil Siswa</Link></li>
+                  <li><Link href="/guru" className="block px-4 py-2 hover:text-red-800">Profil Guru</Link></li>
+                  <li><Link href="/siswa" className="block px-4 py-2 hover:text-red-800">Profil Siswa</Link></li>
                 </ul>
               </li>
 
@@ -152,8 +160,8 @@ export default function Navbar() {
                   </svg>
                 </button>
                 <ul className="absolute left-0 top-[110%] bg-white shadow-md rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 w-48">
-                  <li><Link href="/pengumuman/warta" className="block px-4 py-2 hover:text-red-800">Warta SD</Link></li>
-                  <li><Link href="/pengumuman/berita" className="block px-4 py-2 hover:text-red-800">Berita SD</Link></li>
+                  <li><Link href="/warta" className="block px-4 py-2 hover:text-red-800">Warta SD</Link></li>
+                  <li><Link href="/berita" className="block px-4 py-2 hover:text-red-800">Berita SD</Link></li>
                 </ul>
               </li>
 

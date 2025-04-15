@@ -73,7 +73,7 @@ const PengaduanPage = () => {
               name="nama"
               value={formData.nama}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50"
+              className="w-full p-3 border border-gray-700 text-gray-700 rounded-xl shadow-sm bg-gray-50"
               placeholder="Masukkan nama"
               required
             />
@@ -85,7 +85,7 @@ const PengaduanPage = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50"
+              className="w-full p-3 border border-gray-300 rounded-xl text-gray-700 shadow-sm bg-gray-50"
               placeholder="Masukkan email"
               required
             />
@@ -97,7 +97,7 @@ const PengaduanPage = () => {
               name="subjek"
               value={formData.subjek}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50"
+              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50 text-gray-700"
               placeholder="Subjek pengaduan"
               required
             />
@@ -108,7 +108,7 @@ const PengaduanPage = () => {
               name="pesan"
               value={formData.pesan}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm bg-gray-50"
+              className="w-full p-3 border border-gray-300 rounded-xl shadow-sm text-gray-700 bg-gray-50"
               rows={4}
               placeholder="Tulis pengaduan Anda di sini..."
               required

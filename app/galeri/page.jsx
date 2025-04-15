@@ -29,7 +29,7 @@ const Galery = () => {
   };
 
   return (
-    <div className="w-full bg-white min-h-screen pt-20">
+    <div className="w-full bg-white/90 backdrop-blur-md min-h-screen pt-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold text-center text-red-600 border-b pb-2 mb-10">Galeri Kegiatan</h1>
 

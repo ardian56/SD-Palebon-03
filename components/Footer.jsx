@@ -11,15 +11,15 @@ const Footer = () => {
       <div className="w-full flex flex-col sm:flex-row justify-between bg-white bg-opacity-90 px-10 pt-20 pb-10 shadow backdrop-blur-lg backdrop-saturate-150 text-slate-800">
         <div className="cont flex flex-col mb-6 sm:mb-0">
           <h3 className="border-b-2 border-red-500 text-xl font-bold mb-4 pb-1">Tautan</h3>
-          <a href="#" className="hover:text-red-600 transition-colors">{"> Kemendikbud"}</a>
-          <a href="#" className="hover:text-red-600 transition-colors">{"> Dinas Pendidikan"}</a>
+          <a href="https://kemdiktisaintek.go.id" className="hover:text-red-600 transition-colors">{"> Kemendikbud"}</a>
+          <a href="https://disdiksmg.semarangkota.go.id" className="hover:text-red-600 transition-colors">{"> Dinas Pendidikan"}</a>
         </div>
 
         <div className="cont flex flex-col mb-6 sm:mb-0">
           <h3 className="border-b-2 border-red-500 text-xl font-bold mb-4 pb-1">Ikuti Kami</h3>
           <div className="flex flex-row space-x-4">
-            <a href="#" className="text-4xl text-slate-700 hover:text-red-600 transition-colors"><FaInstagramSquare /></a>
-            <a href="#" className="text-4xl text-slate-700 hover:text-red-600 transition-colors"><IoLogoYoutube /></a>
+            <a href="https://www.instagram.com/sdnpalebon03/" className="text-4xl text-slate-700 hover:text-red-600 transition-colors"><FaInstagramSquare /></a>
+            <a href="https://youtube.com/@sdnpalebon035?si=13NZUF96F7HMd6w2" className="text-4xl text-slate-700 hover:text-red-600 transition-colors"><IoLogoYoutube /></a>
           </div>
         </div>
 

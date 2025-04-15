@@ -71,7 +71,7 @@ const Lomba = () => {
             {Object.entries(grouped).map(([namaLomba, videos]) => (
                 <div key={namaLomba}>
                     <div className="w-1/3 mx-auto pt-20 mb-10 text-center">
-                        <h3 className="text-red-600 border-b text-2xl font-bold  border-slate-300 mb-10 inline-block pb-2">
+                        <h3 className="text-grey-700 border-b text-2xl font-bold  border-slate-300 mb-10 inline-block pb-2">
                             {namaLomba.toUpperCase()}
                         </h3>
                     </div>

@@ -41,7 +41,7 @@ const Berita = () => {
             key={item.id}
             className="flex flex-col md:flex-row md:w-[48%] bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-100 transition"
           >
-            <div className="relative w-full h-48 md:w-48 md:h-auto md:min-h-[200px]">
+            <div className="relative w-full h-48 sm:w-48% sm:h-auto md:min-h-[200px]">
               <Image
                 src={item.gambar}
                 alt={item.judul}

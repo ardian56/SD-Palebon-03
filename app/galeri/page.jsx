@@ -30,8 +30,8 @@ const Galery = () => {
 
   return (
     <div className="w-full bg-white/90 backdrop-blur-md min-h-screen pt-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold text-center text-red-600 border-b pb-2 mb-10">Galeri Kegiatan</h1>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 className="text-4xl font-bold  text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">Galeri Kegiatan</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {data.map((item, i) => (

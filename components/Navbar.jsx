@@ -91,8 +91,8 @@ export default function Navbar() {
                 {isProfilOpen && (
                   <ul className="pl-4 mt-1 space-y-1">
                     <li><Link href="/profil" className="hover:text-red-500">Profil Sekolah</Link></li>
-                    <li><Link href="/profil/guru" className="hover:text-red-500">Profil Guru</Link></li>
-                    <li><Link href="/profil/siswa" className="hover:text-red-500">Profil Siswa</Link></li>
+                    <li><Link href="/guru" className="hover:text-red-500">Profil Guru</Link></li>
+                    <li><Link href="/siswa" className="hover:text-red-500">Profil Siswa</Link></li>
                   </ul>
                 )}
               </li>
@@ -105,8 +105,8 @@ export default function Navbar() {
                 </button>
                 {isPengumumanOpen && (
                   <ul className="pl-4 mt-1 space-y-1">
-                    <li><Link href="/pengumuman/warta" className="hover:text-red-500">Warta SD</Link></li>
-                    <li><Link href="/pengumuman/berita" className="hover:text-red-500">Berita SD</Link></li>
+                    <li><Link href="/warta" className="hover:text-red-500">Warta SD</Link></li>
+                    <li><Link href="/berita" className="hover:text-red-500">Berita SD</Link></li>
                   </ul>
                 )}
               </li>
@@ -169,7 +169,7 @@ export default function Navbar() {
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
               <li><Link href="/pengaduan" className="hover:text-red-500">Pengaduan</Link></li>
-              <li><Link href="/Tentang" className="hover:text-red-500">Tentang</Link></li>
+              
             </ul>
           </div>
         </div>

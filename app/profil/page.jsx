@@ -1,32 +1,44 @@
 'use client';
 
 import Image from 'next/image';
-
+import { IoSchool } from "react-icons/io5";
 const ProfileSekolah = () => {
   return (
-    <div className="w-full bg-white">
-
-      <div className="pt-10">
-        <Image
-          src="/assets/logo.png"
-          alt="Logo Sekolah"
-          className="mx-auto"
-          width={150}
-          height={150}
-        />
+    <div className="w-full bg-white/90 backdrop-blur-md min-h-screen py-12 px-4 sm:px-10">
+      
+      {/* Logo dan Judul */}
+      <div className="flex flex-col items-center text-center mb-12 transition-all duration-300">
+        <div className="relative">
+          <Image
+            src="/assets/logo.png"
+            alt="Logo Sekolah"
+            className="rounded-full shadow-xl ring-4 ring-white"
+            width={220}
+            height={220}
+          />
+          <div className="absolute -inset-1 rounded-full blur-xl  opacity-30 animate-pulse" />
+        </div>
+        <h1 className="mt-6 text-4xl font-bold text-red-600">
+          Profil Sekolah
+        </h1>
+        <p className="text-slate-600 mt-3 max-w-xl">
+          Visi dan misi sebagai pedoman dalam membentuk generasi berakhlak mulia, berprestasi, dan berbudaya.
+        </p>
       </div>
 
-      <div className="visi pb-10 flex flex-col sm:flex-row sm:px-20 gap-5">
+      {/* Visi & Misi Cards */}
+      <div className="flex flex-col sm:flex-row justify-center items-stretch gap-10 sm:px-20">
+        
         {/* Visi */}
-        <div className="relative w-96 bg-white shadow-sm border border-slate-200 rounded-lg p-3 pb-6 mx-auto">
-          <div className="flex justify-center mb-4 mt-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-md hover:shadow-xl transition-all w-full sm:w-96">
+          <div className="flex justify-center mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
+              className="w-12 h-12 text-red-500"
               fill="none"
               viewBox="0 0 24 24"
-              strokeWidth="1.5"
               stroke="currentColor"
-              className="w-10 h-10 text-purple-500"
+              strokeWidth="1.5"
             >
               <path
                 strokeLinecap="round"
@@ -46,33 +58,32 @@ const ProfileSekolah = () => {
               />
             </svg>
           </div>
-          <div className="flex justify-center mb-3">
-            <h5 className="text-slate-800 text-2xl font-semibold">Visi Sekolah</h5>
-          </div>
-          <div className="p-3 mt-5 border-t border-slate-100 text-center max-h-60 overflow-y-auto
+          <h2 className="text-xl font-semibold text-slate-800 mb-4 text-center">Visi Sekolah</h2>
+          <div className="border-t pt-4 text-slate-600 text-center max-h-60 overflow-y-auto
             [&::-webkit-scrollbar-thumb]:rounded-xl
             [&::-webkit-scrollbar-thumb]:bg-slate-300
             [&::-webkit-scrollbar]:w-1.5
-            [&::-webkit-scrollbar-track]:rounded-xl
             [&::-webkit-scrollbar-track]:bg-slate-100"
           >
-            <p className="text-slate-600 leading-normal font-light mb-4 max-w-lg">
+            <p className="leading-relaxed font-light">
               Terwujudnya peserta didik yang: <br />
-              “Mandiri, berprestasi, unggul dalam mutu, berbudaya, dan berakhlak mulia dilandasi iman dan takwa.”
+              <strong className="text-slate-700">
+                “Mandiri, berprestasi, unggul dalam mutu, berbudaya, dan berakhlak mulia dilandasi iman dan takwa.”
+              </strong>
             </p>
           </div>
         </div>
 
         {/* Misi */}
-        <div className="relative w-96 bg-white shadow-sm border border-slate-200 rounded-lg p-3 pb-6 mx-auto">
-          <div className="flex justify-center mb-4 mt-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-md hover:shadow-xl transition-all w-full sm:w-96">
+          <div className="flex justify-center mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
+              className="w-12 h-12 text-red-500"
               fill="none"
               viewBox="0 0 24 24"
-              strokeWidth="1.5"
               stroke="currentColor"
-              className="w-10 h-10 text-purple-500"
+              strokeWidth="1.5"
             >
               <path
                 strokeLinecap="round"
@@ -92,34 +103,26 @@ const ProfileSekolah = () => {
               />
             </svg>
           </div>
-          <div className="flex justify-center mb-3">
-            <h5 className="text-slate-800 text-2xl font-semibold">Misi Sekolah</h5>
-          </div>
-          <div className="p-3 mt-5 border-t border-slate-100 text-center max-h-60 overflow-y-auto
+          <h2 className="text-xl font-semibold text-slate-800 mb-4 text-center">Misi Sekolah</h2>
+          <div className="border-t pt-4 text-slate-600 max-h-60 overflow-y-auto text-sm text-left
+            whitespace-pre-line
             [&::-webkit-scrollbar-thumb]:rounded-xl
             [&::-webkit-scrollbar-thumb]:bg-slate-300
             [&::-webkit-scrollbar]:w-1.5
-            [&::-webkit-scrollbar-track]:rounded-xl
             [&::-webkit-scrollbar-track]:bg-slate-100"
           >
-            <p className="text-slate-600 leading-relaxed font-light mb-4 max-w-lg text-left whitespace-pre-line space-y-2">
-              1. Menyelenggarakan pembelajaran dengan menanamkan nilai-nilai keagamaan dan akhlak mulia.
-              <br />
-              2. Meningkatkan kemampuan literasi, numerasi, dan partisipasi kegiatan.
-              <br />
-              3. Menumbuhkan nilai religious, nasionalis, mandiri, gotong royong.
-              <br />
-              4. Mengaktualisasikan karya dan bakat secara nyata.
-              <br />
-              5. Menumbuhkan semangat kompetitif yang sportif.
-              <br />
-              6. Peduli lingkungan dengan meningkatkan sarana prasarana yang bersih dan nyaman.
+            <p className="leading-relaxed font-light">
+              1. Menanamkan nilai-nilai keagamaan dan akhlak mulia. <br />
+              2. Meningkatkan literasi, numerasi, dan partisipasi aktif. <br />
+              3. Menumbuhkan sikap religious, nasionalis, mandiri, gotong royong. <br />
+              4. Mengembangkan karya dan bakat siswa secara nyata. <br />
+              5. Mendorong semangat kompetisi yang sportif. <br />
+              6. Peduli lingkungan melalui fasilitas yang bersih dan nyaman.
             </p>
-
           </div>
         </div>
-      </div>
 
+      </div>
     </div>
   );
 };

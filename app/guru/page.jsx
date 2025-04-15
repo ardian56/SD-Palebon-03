@@ -22,30 +22,34 @@ export default function Guru() {
   }, []);
 
   return (
-    <div className="w-full bg-white min-h-screen">
-      <div className="pt-20">
-        <p className="text-4xl font-semibold text-gray-700 border-b border-gray-400 pt-2 text-center mb-5">
+    <div className="w-full bg-white/90 backdrop-blur-md min-h-screen py-10 px-4 sm:px-10">
+      <div className="pt-20 text-center"> {/* Tambahkan text-center di sini */}
+        <p className="text-4xl font-semibold text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">
           Profile Guru
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-10 px-5 pb-10">
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 px-6 pb-12">
         {guruList.map((guru, idx) => (
           <Link
             key={idx}
             href="#"
-            className="w-full max-w-sm bg-white border border-gray-200 pt-4 rounded-lg shadow-sm hover:opacity-80"
+            className="bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
           >
-            <div className="flex flex-col items-center pb-10">
-              <Image
-                src={guru.foto}
-                alt={`Foto ${guru.nama}`}
-                width={96}
-                height={96}
-                className="w-24 h-24 mb-3 rounded-full shadow-lg object-cover"
-              />
-              <p className="mb-1 text-sm sm:text-xl font-medium text-center text-gray-900">{guru.nama}</p>
-              <span className="text-sm sm:text-md text-gray-500">{guru.jabatan}</span>
+            <div className="flex flex-col items-center p-6">
+              {/* Foto Guru */}
+              <div className="P-3 w-32 h-32 relative rounded-full overflow-hidden shadow-lg mb-4">
+                <Image
+                  src={guru.foto}
+                  alt={`Foto ${guru.nama}`}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                />
+              </div>
+              {/* Nama dan Jabatan Guru */}
+              <p className="text-lg font-semibold text-center text-gray-800 mb-1">{guru.nama}</p>
+              <span className="text-sm text-gray-500 text-center">{guru.jabatan}</span>
             </div>
           </Link>
         ))}

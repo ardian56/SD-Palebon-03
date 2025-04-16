@@ -38,9 +38,7 @@ const Footer = () => {
       </div>
 
       <div className="w-full text-center bg-red-600 text-lg font-semibold py-3 text-white shadow-inner">
-        &copy; {new Date().getFullYear()} SDN PALEBON 03
-        <br />
-        All rights reserved.
+        SDN PALEBON 03 Semarang
       </div>
     </div>
   );

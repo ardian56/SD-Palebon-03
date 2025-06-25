@@ -161,7 +161,6 @@ export default function Navbar() {
               <li><Link href="/lomba" className="hover:text-red-500">Lomba Siswa</Link></li>
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
-              <li><Link href="/pengaduan" className="hover:text-red-500">Pengaduan</Link></li>
 
               {/* Login/Logout and Dashboard link for Mobile Menu */}
               <li className="mt-4">
@@ -189,7 +188,7 @@ export default function Navbar() {
                           </Link>
                         )}
                         {user && userData?.role === 'admin' && (
-                          <Link href="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                          <Link href="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             Admin Dashboard
                           </Link>
                         )}
@@ -241,7 +240,6 @@ export default function Navbar() {
               <li><Link href="/lomba" className="hover:text-red-500">Lomba Siswa</Link></li>
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
-              <li><Link href="/pengaduan" className="hover:text-red-500">Pengaduan</Link></li>
             </ul>
 
             {/* Login/Logout and Dashboard link for Desktop Menu */}
@@ -269,7 +267,7 @@ export default function Navbar() {
                       </Link>
                     )}
                     {user && userData?.role === 'admin' && (
-                      <Link href="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Link href="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         Admin Dashboard
                       </Link>
                     )}

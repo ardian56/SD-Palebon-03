@@ -1,0 +1,297 @@
+// app/guru/ekstra/lihat/page.jsx
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabaseClient'; // Adjust path as needed
+
+export default function LihatEkstrakurikulerSiswa() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null); // Role and class info for the current guru
+  const [message, setMessage] = useState('');
+  const [studentsExtracurricularData, setStudentsExtracurricularData] = useState([]);
+  const [filterClassId, setFilterClassId] = useState(null); // Used by regular guru
+  const [isGuruBkViewingAll, setIsGuruBkViewingAll] = useState(false); // Used by guru BK
+
+  useEffect(() => {
+    const checkUserAndFetchData = async () => {
+      setLoading(true);
+      setMessage('');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (!session || sessionError) {
+        router.push('/auth/signin');
+        return;
+      }
+
+      setUser(session.user);
+
+      // Fetch current user's profile to determine role and class
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('name, role, classes(id, name)')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError || (!profile?.role.includes('guru'))) { // Allow both 'guru' and 'guru_bk'
+        setMessage('Akses ditolak: Anda tidak memiliki izin untuk melihat halaman ini.');
+        await supabase.auth.signOut();
+        router.push('/');
+        return;
+      }
+      setUserData(profile);
+
+      let studentsToFetch;
+      let availableExtrasToFetch;
+      let currentClassFilter = null;
+      let viewingAll = false;
+
+      // Determine data fetching strategy based on role and URL parameters
+      if (profile.role === 'guru_bk') {
+        const allParam = searchParams.get('all');
+        if (allParam === 'true') {
+          viewingAll = true;
+          setIsGuruBkViewingAll(true);
+          // Guru BK, fetch all students
+          const { data: allStudents, error: allStudentsError } = await supabase
+            .from('users')
+            .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
+            .eq('role', 'siswa'); // Get only students
+
+          if (allStudentsError) {
+            setMessage('Error fetching all students: ' + allStudentsError.message);
+            setLoading(false);
+            return;
+          }
+          studentsToFetch = allStudents;
+
+          // Guru BK, fetch all extracurriculars
+          const { data: allExtras, error: allExtrasError } = await supabase
+            .from('extracurriculars')
+            .select('id, name, class_id'); // Get all extras for comparison
+
+          if (allExtrasError) {
+            setMessage('Error fetching all extracurriculars: ' + allExtrasError.message);
+            setLoading(false);
+            return;
+          }
+          availableExtrasToFetch = allExtras;
+
+        } else {
+            // If guru BK somehow lands here without 'all=true', default to their own class if they have one
+            // This case might be less likely with the new dashboard links.
+            currentClassFilter = profile.classes?.id;
+            if (!currentClassFilter) {
+                setMessage('Guru BK harus melihat semua siswa atau guru tidak memiliki kelas yang diampu.');
+                setLoading(false);
+                return;
+            }
+            setFilterClassId(currentClassFilter); // Set filter class ID
+            // Fetch students for this class
+            const { data: classStudents, error: classStudentsError } = await supabase
+                .from('users')
+                .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
+                .eq('role', 'siswa')
+                .eq('class_id', currentClassFilter);
+
+            if (classStudentsError) {
+                setMessage('Error fetching students for class: ' + classStudentsError.message);
+                setLoading(false);
+                return;
+            }
+            studentsToFetch = classStudents;
+
+            // Fetch extracurriculars specific to this class
+            const { data: classExtras, error: classExtrasError } = await supabase
+                .from('extracurriculars')
+                .select('id, name, class_id')
+                .eq('class_id', currentClassFilter);
+
+            if (classExtrasError) {
+                setMessage('Error fetching class extracurriculars: ' + classExtrasError.message);
+                setLoading(false);
+                return;
+            }
+            availableExtrasToFetch = classExtras;
+        }
+
+      } else if (profile.role === 'guru') {
+        currentClassFilter = searchParams.get('classId');
+        if (!currentClassFilter || profile.classes?.id !== currentClassFilter) {
+          setMessage('Akses ditolak: ID Kelas tidak valid atau tidak cocok dengan kelas yang Anda ampu.');
+          await supabase.auth.signOut();
+          router.push('/');
+          return;
+        }
+        setFilterClassId(currentClassFilter); // Set filter class ID
+
+        // Regular Guru, fetch students only from their assigned class
+        const { data: classStudents, error: classStudentsError } = await supabase
+          .from('users')
+          .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
+          .eq('role', 'siswa')
+          .eq('class_id', currentClassFilter);
+
+        if (classStudentsError) {
+          setMessage('Error fetching students for class: ' + classStudentsError.message);
+          setLoading(false);
+          return;
+        }
+        studentsToFetch = classStudents;
+
+        // Regular Guru, fetch extracurriculars specific to their class
+        const { data: classExtras, error: classExtrasError } = await supabase
+          .from('extracurriculars')
+          .select('id, name, class_id')
+          .eq('class_id', currentClassFilter);
+
+        if (classExtrasError) {
+          setMessage('Error fetching class extracurriculars: ' + classExtrasError.message);
+          setLoading(false);
+          return;
+        }
+        availableExtrasToFetch = classExtras;
+      } else {
+        setMessage('Peran tidak dikenal.');
+        setLoading(false);
+        return;
+      }
+
+      // Process fetched data to determine selected and unselected extracurriculars
+      const processedStudents = studentsToFetch.map(student => {
+        const studentSelectedExtraIds = new Set(
+          student.student_extracurriculars.map(se => se.extracurricular_id)
+        );
+
+        const selectedExtras = student.student_extracurriculars.map(se => se.extracurriculars.name);
+
+        // Filter availableExtrasToFetch based on the student's class (if applicable)
+        // If it's a guru BK viewing all, then availableExtrasToFetch might be all extras
+        // If it's class-specific, filter by class_id of the student's class
+        const relevantAvailableExtras = viewingAll
+            ? availableExtrasToFetch.filter(extra => extra.class_id === student.classes?.id)
+            : availableExtrasToFetch.filter(extra => extra.class_id === currentClassFilter); // Or student.classes?.id if more dynamic
+
+        const unselectedExtras = relevantAvailableExtras
+          .filter(extra => !studentSelectedExtraIds.has(extra.id))
+          .map(extra => extra.name);
+
+        return {
+          id: student.id,
+          name: student.name,
+          className: student.classes?.name || 'Tidak ada kelas',
+          selected: selectedExtras,
+          unselected: unselectedExtras,
+        };
+      });
+
+      setStudentsExtracurricularData(processedStudents);
+      setLoading(false);
+    };
+
+    checkUserAndFetchData();
+  }, [router, supabase, searchParams]); // Dependencies for useEffect
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-blue-600 text-lg">Memuat data ekstrakurikuler siswa...</div>
+      </div>
+    );
+  }
+
+  if (message) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
+        <p className="mb-4 p-3 rounded bg-red-100 text-red-700">
+          {message}
+        </p>
+      </div>
+    );
+  }
+      
+  return (
+    <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
+      <button
+        className="mb-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+        onClick={() => router.push('/guru/dashboard')}
+      >
+        &larr; Kembali ke Dashboard
+      </button>
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+        Daftar Ekstrakurikuler Siswa
+        {isGuruBkViewingAll ? " (Semua Kelas)" : userData?.classes?.name ? ` (${userData.classes.name})` : ''}
+      </h1>
+      <p className="text-gray-600 mb-6">
+        {userData?.role === 'guru_bk' ?
+         'Anda melihat daftar ekstrakurikuler semua siswa.' :
+         `Anda melihat daftar ekstrakurikuler siswa di kelas ${userData?.classes?.name || ''}.`
+        }
+      </p>
+
+      {studentsExtracurricularData.length === 0 ? (
+        <p className="text-gray-500">Tidak ada data siswa atau ekstrakurikuler ditemukan.</p>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-lg shadow-md p-4">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nama Siswa
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Kelas
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ekstrakurikuler Diambil
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ekstrakurikuler Belum Diambil
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {studentsExtracurricularData.map((student) => (
+                <tr key={student.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {student.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {student.className}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {student.selected.length > 0 ? (
+                      <ul className="list-disc list-inside">
+                        {student.selected.map((extra, idx) => (
+                          <li key={idx}>{extra}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-gray-500">Belum mengambil ekstra</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {student.unselected.length > 0 ? (
+                      <ul className="list-disc list-inside">
+                        {student.unselected.map((extra, idx) => (
+                          <li key={idx} className="text-red-500">{extra}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-green-600">Sudah mengambil semua yang tersedia</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

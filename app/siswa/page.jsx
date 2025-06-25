@@ -1,30 +1,79 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabaseClient'; 
 
-export default function KelasPage() {
+export default function DaftarSiswaPage() {
   const [data, setData] = useState([]);
-  const [filterKelas, setFilterKelas] = useState('');
+  const [filterClassName, setFilterClassName] = useState(''); // Filter berdasarkan nama kelas
+  const [classesOptions, setClassesOptions] = useState([]); // <--- INI SUDAH BENAR, TAPI NAMANYA KELASOPTIONS DI BAWAH
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const supabase = createClient();
 
   useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Ambil daftar semua kelas untuk filter dropdown
+        const { data: classesData, error: classesError } = await supabase
+          .from('classes')
+          .select('id, name')
+          .order('name', { ascending: true });
+
+        if (classesError) {
+          throw classesError;
+        }
+        setClassesOptions(classesData || []); // <--- DISIMPAN KE classesOptions
+
+        // 2. Ambil data user dengan role 'siswa' dan nama kelasnya
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, email, role, classes(name)') // Select role dan join ke classes untuk nama kelas
+          .eq('role', 'siswa') // Hanya user dengan role 'siswa'
+          .order('name', { ascending: true }); // Urutkan berdasarkan nama siswa
+
+        if (usersError) {
+          throw usersError;
+        }
+        setData(usersData || []);
+
+      } catch (err) {
+        console.error('Error fetching data:', err.message);
+        setError('Gagal memuat data siswa: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     fetchData();
-  }, []);
+  }, [supabase]);
 
-  async function fetchData() {
-    const { data } = await supabase
-      .from('kelas')
-      .select('*')
-      .order('kelas_order', { ascending: true });
-
-    setData(data || []);
-  }
-
-  const filteredData = filterKelas
-    ? data.filter((item) => item.kelas.toLowerCase() === filterKelas.toLowerCase())
+  const filteredData = filterClassName
+    ? data.filter((item) => item.classes?.name.toLowerCase() === filterClassName.toLowerCase())
     : data;
 
-  const kelasOptions = [...new Set(data.map((item) => item.kelas))];
+  // Hapus baris ini: const kelasOptions = [...new Set(data.map((item) => item.kelas))];
+  // Karena sekarang kita pakai classesOptions yang sudah di-fetch dari tabel classes.
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen bg-white/90 backdrop-blur-md text-center text-gray-700">
+        Memuat daftar siswa...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 min-h-screen bg-white/90 backdrop-blur-md text-center text-red-600">
+        <p>{error}</p>
+        <p className="mt-4">Pastikan RLS sudah diatur untuk tabel `users` dan `classes` agar user yang login bisa melihat data siswa.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 min-h-screen bg-white/90 backdrop-blur-md">
@@ -36,19 +85,18 @@ export default function KelasPage() {
         <div className="flex gap-2">
           <select
             className="flex-1 border border-gray-300 px-3 py-2 rounded-md shadow-sm bg-white"
-            value={filterKelas}
-            onChange={(e) => setFilterKelas(e.target.value)}
+            value={filterClassName}
+            onChange={(e) => setFilterClassName(e.target.value)}
           >
             <option value="">Semua Kelas</option>
-            {kelasOptions.map((kls, i) => (
-              <option key={i} value={kls}>
-                {kls}
-              </option>
+            {/* AKSES classesOptions DI SINI */}
+            {classesOptions.map((cls) => (
+              <option key={cls.id} value={cls.name}>{cls.name}</option>
             ))}
           </select>
-          {filterKelas && (
+          {filterClassName && (
             <button
-              onClick={() => setFilterKelas('')}
+              onClick={() => setFilterClassName('')}
               className="px-3 py-2 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition"
             >
               Reset
@@ -63,16 +111,14 @@ export default function KelasPage() {
           <table className="min-w-[800px] w-full text-base text-slate-700">
             <thead className="bg-slate-100 text-slate-800 sticky top-0 z-10">
               <tr>
-                <th className="text-left px-8 py-4 border-b border-slate-300">Nama</th>
-                <th className="text-left px-8 py-4 border-b border-slate-300">Kelas</th>
-                <th className="text-left px-8 py-4 border-b border-slate-300">Gender</th>
+                <th className="text-left px-8 py-4 border-b border-slate-300">Nama</th><th className="text-left px-8 py-4 border-b border-slate-300">Email</th><th className="text-left px-8 py-4 border-b border-slate-300">Kelas</th>
               </tr>
             </thead>
             <tbody>
               {filteredData.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="text-center py-6 text-slate-400">
-                    Belum ada data siswa.
+                    {loading ? 'Memuat...' : filterClassName ? `Tidak ada siswa di kelas ${filterClassName}.` : 'Belum ada data siswa.'}
                   </td>
                 </tr>
               ) : (
@@ -85,9 +131,7 @@ export default function KelasPage() {
                         : 'bg-slate-50 hover:bg-slate-100'
                     }
                   >
-                    <td className="px-8 py-4 border-b border-slate-200">{item.nama}</td>
-                    <td className="px-8 py-4 border-b border-slate-200">{item.kelas}</td>
-                    <td className="px-8 py-4 border-b border-slate-200">{item.gender}</td>
+                    <td className="px-8 py-4 border-b border-slate-200">{item.name}</td><td className="px-8 py-4 border-b border-slate-200">{item.email}</td><td className="px-8 py-4 border-b border-slate-200">{item.classes?.name || 'Belum Ada Kelas'}</td>
                   </tr>
                 ))
               )}

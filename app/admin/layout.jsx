@@ -1,9 +1,11 @@
-'use client';
+// app/admin/layout.jsx (Asumsi ini lokasi layout admin Anda)
+"use client"; // Ini adalah Client Component
 
-import '../globals.css';
-import { useEffect, useState } from 'react';
+import '../globals.css'; // Pastikan path ini benar dari lokasi layout admin Anda
+import { useState } from 'react'; // Hapus useEffect, user, loading state terkait auth check
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '../../lib/supabaseClient'; // <--- Ubah import ke client-side Supabase client
+
 import {
   Menu,
   LayoutDashboard,
@@ -20,29 +22,36 @@ import {
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
 
+  // Hapus state loading dan user, karena autentikasi sudah ditangani middleware
+  // const [loading, setLoading] = useState(true);
+  // const [user, setUser] = useState(null);
+
+  // Hapus useEffect untuk checkSession, karena middleware sudah melakukan validasi
+  /*
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getUser();
       if (!data?.user) {
-        router.push('/login');
+        router.push('/login'); // Middleware seharusnya sudah mengarahkan ini
       } else {
         setUser(data.user);
         setLoading(false);
       }
     };
-
     checkSession();
   }, [router]);
+  */
+
+  const supabase = createClient(); // Gunakan client-side Supabase instance
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    router.push('/auth/signin'); // Arahkan ke halaman login universal setelah logout
   };
 
-  if (loading) return <div className="p-6 text-white bg-black min-h-screen">Memuat...</div>;
+  // Hapus kondisi loading, karena diasumsikan middleware sudah meloloskan user
+  // if (loading) return <div className="p-6 text-white bg-black min-h-screen">Memuat...</div>;
 
   return (
     <div className="h-screen flex flex-col md:flex-row bg-[#0d0d0d] text-white font-sans">
@@ -73,23 +82,18 @@ export default function AdminLayout({ children }) {
         </button>
       </div>
 
-
-
-
-
-
         <div className="space-y-2">
           <h2 className="text-md font-semibold text-orange-400 mb-4 hidden md:block px-2">🛠 Admin</h2>
 
           {[
-            { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
-            { name: 'Berita', href: '/admin/berita', icon: <Newspaper className="h-4 w-4" /> },
-            { name: 'Warta', href: '/admin/warta', icon: <FileText className="h-4 w-4" /> },
-            { name: 'Galeri', href: '/admin/galeri', icon: <Image className="h-4 w-4" /> },
-            { name: 'Profil Guru', href: '/admin/guru', icon: <Users className="h-4 w-4" /> },
-            { name: 'Siswa', href: '/admin/kelas', icon: <BookOpen className="h-4 w-4" /> },
-            { name: 'Lomba', href: '/admin/lomba', icon: <Trophy className="h-4 w-4" /> },
-            { name: 'Pengaduan', href: '/admin/pengaduan', icon: <FileText className="h-4 w-4" /> },
+            // Sesuaikan hrefs ini dengan struktur folder App Router Anda (misal app/admin/page.jsx)
+            { name: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> }, // Contoh: /app/admin-dashboard/page.jsx
+            { name: 'Berita', href: '/admin/berita', icon: <Newspaper className="h-4 w-4" /> },             // Contoh: /app/admin/berita/page.jsx
+            { name: 'Warta', href: '/admin/warta', icon: <FileText className="h-4 w-4" /> },               // Contoh: /app/admin/warta/page.jsx
+            { name: 'Galeri', href: '/admin/galeri', icon: <Image className="h-4 w-4" /> },                 // Contoh: /app/admin/galeri/page.jsx
+            { name: 'Profil Guru', href: '/admin/guru', icon: <Users className="h-4 w-4" /> },              // Contoh: /app/admin/guru/page.jsx
+            { name: 'Siswa', href: '/admin/siswa', icon: <BookOpen className="h-4 w-4" /> },              // Contoh: /app/admin/siswa/page.jsx (ubah dari /admin/kelas)
+            { name: 'Lomba', href: '/admin/lomba', icon: <Trophy className="h-4 w-4" /> },                 // Contoh: /app/admin/lomba/page.jsx
           ].map((item) => (
             <a
               key={item.href}
@@ -116,7 +120,7 @@ export default function AdminLayout({ children }) {
       <main className="flex-1 bg-[#121212] p-4 md:p-6 overflow-y-auto h-screen">
         {children}
       </main>
-      
+
     </div>
   );
 }

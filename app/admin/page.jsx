@@ -18,8 +18,8 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchCounts = async () => {
-    const { count: siswaCount } = await supabase.from('kelas').select('*', { count: 'exact', head: true });
-    const { count: guruCount } = await supabase.from('guru').select('*', { count: 'exact', head: true });
+    const { count: siswaCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'siswa');
+    const { count: guruCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'guru');
     const { count: beritaCount } = await supabase.from('berita').select('*', { count: 'exact', head: true });
     const { count: galeriCount } = await supabase.from('galeri').select('*', { count: 'exact', head: true });
     const { count: lombaCount } = await supabase.from('lomba').select('*', { count: 'exact', head: true });

@@ -1,100 +1,216 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Plus, X, Edit, Trash2, BookOpen } from 'lucide-react';
+import { createClient } from '@/lib/supabaseClient';
+import { Plus, X, Edit, Trash2, Users } from 'lucide-react';
+import Image from 'next/image';
 
-export default function KelasPage() {
+export default function AdminSiswaPage() {
   const [nama, setNama] = useState('');
-  const [kelas, setKelas] = useState('');
-  const [gender, setGender] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [fotoFile, setFotoFile] = useState(null);
   const [data, setData] = useState([]);
-  const [filterKelas, setFilterKelas] = useState('');
+  const [filterClassId, setFilterClassId] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  const kelas_order = getKelasOrder(kelas);
+  const [classesOptions, setClassesOptions] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
+
+  const supabase = createClient();
 
   useEffect(() => {
-    fetchData();
+    fetchSiswaAndClasses();
   }, []);
 
-  async function fetchData() {
-    const { data } = await supabase.from('kelas').select('*').order('kelas_order', { ascending: true });
-    setData(data);
-  }
+  async function fetchSiswaAndClasses() {
+    try {
+      const { data: classesData, error: classesError } = await supabase
+        .from('classes')
+        .select('id, name')
+        .order('name', { ascending: true });
 
-  function getKelasOrder(kelas) {
-    const match = kelas.match(/(\d)[A-Z]/); 
-    if (!match) return 999; 
-    const [_, angka] = match;
-    const huruf = kelas.trim().slice(-1); 
-    return parseInt(angka) * 10 + (huruf.charCodeAt(0) - 65);
+      if (classesError) {
+        throw classesError;
+      }
+      setClassesOptions(classesData || []);
+
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email, role, photo_url, classes(id, name), class_id')
+        .eq('role', 'siswa')
+        .order('name', { ascending: true });
+
+      if (usersError) {
+        throw usersError;
+      }
+      setData(usersData || []);
+
+    } catch (err) {
+      console.error('Error fetching student data:', err.message);
+    }
   }
-  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nama || !kelas || !gender) return alert('Semua field wajib diisi!');
 
-
-    if (isEditing) {
-      await supabase.from('kelas').update({ nama, kelas, gender, kelas_order }).eq('id', editId);
-      alert('Data berhasil diperbarui!');
+    if (!isEditing) {
+      if (!nama || !emailInput || !passwordInput) {
+        alert('Nama, Email, dan Password harus diisi untuk user baru!');
+        return;
+      }
     } else {
-      await supabase.from('kelas').insert({ nama, kelas, gender, kelas_order });
-      alert('Data berhasil ditambahkan!');
+      if (!nama) {
+        alert('Nama harus diisi!');
+        return;
+      }
     }
 
+    let photoUrl = null;
+    if (fotoFile) {
+      const fileExt = fotoFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `user/${fileName}`;
 
-    resetForm();
-    fetchData();
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, fotoFile, {
+            cacheControl: '3600',
+            upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload foto gagal:', uploadError.message);
+        return alert('Upload foto gagal! ' + uploadError.message);
+      }
+      photoUrl = supabase.storage.from('images').getPublicUrl(filePath).data.publicUrl;
+    }
+
+    const classToStore = selectedClassId === '' ? null : selectedClassId;
+
+    try {
+      if (isEditing) {
+        const updateData = {
+          name: nama,
+          class_id: classToStore,
+          ...(photoUrl && { photo_url: photoUrl }),
+        };
+
+        const { error } = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', editId)
+          .eq('role', 'siswa');
+
+        if (error) {
+          throw new Error('Gagal mengedit data siswa: ' + error.message);
+        }
+        alert('Data siswa berhasil diperbarui!');
+
+      } else {
+        const response = await fetch('/api/admin/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: nama,
+            email: emailInput,
+            password: passwordInput,
+            role: 'siswa',
+            class_id: classToStore,
+            photo_url: photoUrl,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Gagal menambahkan user baru.');
+        }
+
+        alert('Siswa berhasil ditambahkan!');
+      }
+
+      resetForm();
+      fetchSiswaAndClasses();
+
+    } catch (err) {
+      console.error('Error handling form submission:', err.message);
+      alert('Terjadi kesalahan: ' + err.message);
+    }
   };
 
   function resetForm() {
     setNama('');
-    setKelas('');
-    setGender('');
+    setEmailInput('');
+    setPasswordInput('');
+    setFotoFile(null);
+    setSelectedClassId('');
     setEditId(null);
     setIsEditing(false);
     setShowForm(false);
   }
 
-  async function deleteData(id) {
-    const confirmDelete = window.confirm('Yakin ingin menghapus data ini?');
+  async function deleteData(id, photoUrl) {
+    const confirmDelete = window.confirm('Yakin ingin menghapus data siswa ini? Ini juga akan menghapus foto dari storage.');
     if (!confirmDelete) return;
-    await supabase.from('kelas').delete().eq('id', id);
-    fetchData();
+
+    try {
+      if (photoUrl) {
+        const pathSegments = photoUrl.split('/');
+        const fileNameWithFolder = pathSegments.slice(pathSegments.indexOf('user_photos')).join('/');
+
+        const { error: storageError } = await supabase.storage
+          .from('images')
+          .remove([fileNameWithFolder]);
+
+        if (storageError && storageError.statusCode !== '404') {
+          console.error('Error deleting photo from storage:', storageError.message);
+        }
+      }
+
+      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(id);
+      if (authDeleteError) {
+          throw new Error(`Gagal menghapus user dari Auth: ${authDeleteError.message}`);
+      }
+
+      alert('Data siswa berhasil dihapus!');
+      fetchSiswaAndClasses();
+    } catch (err) {
+      console.error('An unexpected error occurred during deletion:', err.message);
+      alert('Terjadi kesalahan saat menghapus data: ' + err.message);
+    }
   }
 
   function startEdit(item) {
     setIsEditing(true);
     setEditId(item.id);
-    setNama(item.nama);
-    setKelas(item.kelas);
-    setGender(item.gender);
+    setNama(item.name);
+    setEmailInput(item.email);
+    setSelectedClassId(item.class_id || '');
+    setFotoFile(null);
+    setPasswordInput('');
     setShowForm(true);
   }
 
-  const filteredData = filterKelas
-    ? data.filter((item) => item.kelas.toLowerCase() === filterKelas.toLowerCase())
+  const filteredData = filterClassId
+    ? data.filter((item) => item.class_id === filterClassId)
     : data;
-
-  const kelasOptions = [...new Set(data.map((item) => item.kelas))];
 
   return (
     <div className="p-4 sm:p-6 text-white bg-[#111] min-h-screen">
       <div className="flex items-center justify-between mb-6">
-          <BookOpen size={24} className="text-orange-400" />
-          <h2 className="text-3xl font-semibold text-white tracking-wide"> Siswa</h2>
-       
+        <Users size={24} className="text-orange-400" />
+        <h2 className="text-3xl font-semibold text-white tracking-wide"> Admin Siswa</h2>
         <button
           onClick={() => {
             setShowForm(!showForm);
             if (isEditing) resetForm();
           }}
           className={`p-2 rounded-full ${showForm ? 'bg-red-600' : 'bg-orange-500'} hover:opacity-80 text-white`}
-          title={showForm ? 'Tutup Form' : 'Tambah Kelas'}
+          title={showForm ? 'Tutup Form' : 'Tambah Siswa'}
         >
           {showForm ? <X size={20} /> : <Plus size={20} />}
         </button>
@@ -103,41 +219,56 @@ export default function KelasPage() {
       {showForm && (
         <div className="bg-[#1a1a1a] border border-gray-700 p-4 rounded-xl mb-8 shadow-sm">
           <h3 className="text-lg font-medium text-orange-400 mb-3">
-            {isEditing ? 'Edit Kelas' : 'Form Tambah Kelas'}
+            {isEditing ? 'Edit Siswa' : 'Form Tambah Siswa'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
-              placeholder="Nama"
+              placeholder="Nama Lengkap Siswa"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
             />
+            {!isEditing && (
+                <>
+                    <input
+                        className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
+                        placeholder="Email Siswa"
+                        type="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                    />
+                    <input
+                        className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full focus:outline-none"
+                        placeholder="Password Siswa"
+                        type="password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                    />
+                </>
+            )}
             <select
               className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full"
-              value={kelas}
-              onChange={(e) => setKelas(e.target.value)}
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
             >
-              <option value="">Pilih Kelas</option>
-              {[
-                'Kelas 1A', 'Kelas 1B',
-                'Kelas 2A', 'Kelas 2B',
-                'Kelas 3A', 'Kelas 3B',
-                'Kelas 4A', 'Kelas 4B',
-                'Kelas 5A', 'Kelas 5B',
-                'Kelas 6A', 'Kelas 6B',
-              ].map((k) => (
-                <option key={k} value={k}>{k}</option>
+              <option value="">Pilih Kelas (Opsional)</option>
+              {classesOptions.map((cls) => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
               ))}
             </select>
-            <select
-              className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-            >
-              <option value="">Pilih Gender</option>
-              <option value="Laki-Laki">Laki-laki</option>
-              <option value="Perempuan">Perempuan</option>
-            </select>
+            <div>
+                <label className="block text-sm text-gray-400 mb-1">Foto Profil (Opsional):</label>
+                <input
+                    type="file"
+                    className="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600"
+                    onChange={(e) => setFotoFile(e.target.files[0])}
+                />
+                {isEditing && !fotoFile && data.find(item => item.id === editId)?.photo_url && (
+                    <p className="text-xs text-gray-400 mt-1">
+                        Foto saat ini akan tetap digunakan jika tidak ada file baru yang dipilih.
+                    </p>
+                )}
+            </div>
             <div className="flex items-center gap-3">
               <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
                 {isEditing ? 'Update' : 'Simpan'}
@@ -156,43 +287,52 @@ export default function KelasPage() {
         <label className="block mb-1 font-medium text-white">Filter Kelas:</label>
         <select
           className="bg-[#222] border border-gray-600 px-3 py-2 rounded w-full max-w-xs text-white"
-          value={filterKelas}
-          onChange={(e) => setFilterKelas(e.target.value)}
+          value={filterClassId}
+          onChange={(e) => setFilterClassId(e.target.value)}
         >
           <option value="">Semua Kelas</option>
-          {kelasOptions.map((kls, i) => (
-            <option key={i} value={kls}>{kls}</option>
+          {classesOptions.map((cls) => (
+            <option key={cls.id} value={cls.id}>{cls.name}</option>
           ))}
         </select>
       </div>
 
+      {/* Tampilan Tabel untuk Siswa */}
       <div className="overflow-x-auto rounded-lg shadow-sm">
         <table className="min-w-full text-sm bg-[#1a1a1a] border border-gray-700">
           <thead className="bg-[#222] text-orange-400">
             <tr>
-              <th className="px-4 py-3 border border-gray-700 text-left">Nama</th>
-              <th className="px-4 py-3 border border-gray-700 text-left">Kelas</th>
-              <th className="px-4 py-3 border border-gray-700 text-left">Gender</th>
-              <th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Nama</th><th className="px-4 py-3 border border-gray-700 text-left">Email</th><th className="px-4 py-3 border border-gray-700 text-left">Kelas</th><th className="px-4 py-3 border border-gray-700 text-center">Foto</th><th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan="4" className="text-center text-gray-400 py-4">Belum ada data kelas.</td>
+                <td colSpan="5" className="text-center text-gray-400 py-4">Belum ada data siswa.</td>
               </tr>
             ) : (
               filteredData.map((item, index) => (
                 <tr key={item.id} className={index % 2 === 0 ? 'bg-[#1a1a1a]' : 'bg-[#181818]'}>
-                  <td className="px-4 py-3 border border-gray-700 align-top">{item.nama}</td>
-                  <td className="px-4 py-3 border border-gray-700 align-top">{item.kelas}</td>
-                  <td className="px-4 py-3 border border-gray-700 align-top">{item.gender}</td>
-                  <td className="px-4 py-3 border border-gray-700 text-center">
+                  <td className="px-4 py-3 border border-gray-700 align-top">{item.name}</td><td className="px-4 py-3 border border-gray-700 align-top">{item.email}</td><td className="px-4 py-3 border border-gray-700 align-top">{item.classes?.name || 'Belum Ada Kelas'}</td><td className="px-4 py-3 border border-gray-700 text-center">
+                    {item.photo_url ? (
+                      <Image
+                        src={item.photo_url}
+                        alt={`foto ${item.name}`}
+                        width={64}
+                        height={64}
+                        className="object-cover rounded mx-auto"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-600 rounded flex items-center justify-center mx-auto text-gray-400 text-xl">
+                          {item.name ? item.name[0].toUpperCase() : 'S'}
+                      </div>
+                    )}
+                  </td><td className="px-4 py-3 border border-gray-700 text-center">
                     <div className="flex justify-center gap-2">
                       <button onClick={() => startEdit(item)} className="text-yellow-400 hover:text-yellow-300" title="Edit">
                         <Edit size={18} />
                       </button>
-                      <button onClick={() => deleteData(item.id)} className="text-red-500 hover:text-red-400" title="Hapus">
+                      <button onClick={() => deleteData(item.id, item.photo_url)} className="text-red-500 hover:text-red-400" title="Hapus">
                         <Trash2 size={18} />
                       </button>
                     </div>

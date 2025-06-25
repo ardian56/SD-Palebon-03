@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabaseClient'; 
+import Image from 'next/image'; // Import Image component for student photos
+import Link from 'next/link'; // Import Link component if you plan to have student detail pages
+import { createClient } from '@/lib/supabaseClient';
 
 export default function DaftarSiswaPage() {
   const [data, setData] = useState([]);
-  const [filterClassName, setFilterClassName] = useState(''); // Filter berdasarkan nama kelas
-  const [classesOptions, setClassesOptions] = useState([]); // <--- INI SUDAH BENAR, TAPI NAMANYA KELASOPTIONS DI BAWAH
+  const [filterClassName, setFilterClassName] = useState('');
+  const [classesOptions, setClassesOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -17,7 +19,7 @@ export default function DaftarSiswaPage() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Ambil daftar semua kelas untuk filter dropdown
+        // 1. Fetch all classes for the filter dropdown
         const { data: classesData, error: classesError } = await supabase
           .from('classes')
           .select('id, name')
@@ -26,20 +28,19 @@ export default function DaftarSiswaPage() {
         if (classesError) {
           throw classesError;
         }
-        setClassesOptions(classesData || []); // <--- DISIMPAN KE classesOptions
+        setClassesOptions(classesData || []);
 
-        // 2. Ambil data user dengan role 'siswa' dan nama kelasnya
+        // 2. Fetch student data with their class names and photo_url
         const { data: usersData, error: usersError } = await supabase
           .from('users')
-          .select('id, name, email, role, classes(name)') // Select role dan join ke classes untuk nama kelas
-          .eq('role', 'siswa') // Hanya user dengan role 'siswa'
-          .order('name', { ascending: true }); // Urutkan berdasarkan nama siswa
+          .select('id, name, email, photo_url, role, classes(name)') // Added photo_url
+          .eq('role', 'siswa')
+          .order('name', { ascending: true });
 
         if (usersError) {
           throw usersError;
         }
         setData(usersData || []);
-
       } catch (err) {
         console.error('Error fetching data:', err.message);
         setError('Gagal memuat data siswa: ' + err.message);
@@ -55,12 +56,14 @@ export default function DaftarSiswaPage() {
     ? data.filter((item) => item.classes?.name.toLowerCase() === filterClassName.toLowerCase())
     : data;
 
-  // Hapus baris ini: const kelasOptions = [...new Set(data.map((item) => item.kelas))];
-  // Karena sekarang kita pakai classesOptions yang sudah di-fetch dari tabel classes.
-
   if (loading) {
     return (
-      <div className="p-6 min-h-screen bg-white/90 backdrop-blur-md text-center text-gray-700">
+      <div className="w-full bg-white/90 backdrop-blur-md min-h-screen py-10 px-4 sm:px-10 text-center text-gray-700">
+        <div className="pt-20 text-center">
+          <p className="text-4xl font-semibold text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">
+            Daftar Siswa
+          </p>
+        </div>
         Memuat daftar siswa...
       </div>
     );
@@ -68,7 +71,12 @@ export default function DaftarSiswaPage() {
 
   if (error) {
     return (
-      <div className="p-6 min-h-screen bg-white/90 backdrop-blur-md text-center text-red-600">
+      <div className="w-full bg-white/90 backdrop-blur-md min-h-screen py-10 px-4 sm:px-10 text-center text-red-600">
+        <div className="pt-20 text-center">
+          <p className="text-4xl font-semibold text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">
+            Daftar Siswa
+          </p>
+        </div>
         <p>{error}</p>
         <p className="mt-4">Pastikan RLS sudah diatur untuk tabel `users` dan `classes` agar user yang login bisa melihat data siswa.</p>
       </div>
@@ -76,20 +84,24 @@ export default function DaftarSiswaPage() {
   }
 
   return (
-    <div className="p-6 min-h-screen bg-white/90 backdrop-blur-md">
-      <h1 className="text-3xl font-bold text-center text-gray-700 mb-10">Daftar Siswa</h1>
+    <div className="w-full bg-white/90 backdrop-blur-md min-h-screen py-10 px-4 sm:px-10">
+      <div className="pt-20 text-center">
+        <p className="text-4xl font-semibold text-red-600 border-b border-slate-300 pb-2 mb-10 inline-block">
+          Daftar Siswa
+        </p>
+      </div>
 
       {/* Filter */}
       <div className="max-w-md mx-auto mb-8 text-gray-700">
-        <label className="block mb-2 font-medium">Filter Kelas:</label>
+        <label htmlFor="class-filter" className="block mb-2 font-medium">Filter Kelas:</label>
         <div className="flex gap-2">
           <select
+            id="class-filter"
             className="flex-1 border border-gray-300 px-3 py-2 rounded-md shadow-sm bg-white"
             value={filterClassName}
             onChange={(e) => setFilterClassName(e.target.value)}
           >
             <option value="">Semua Kelas</option>
-            {/* AKSES classesOptions DI SINI */}
             {classesOptions.map((cls) => (
               <option key={cls.id} value={cls.name}>{cls.name}</option>
             ))}
@@ -105,39 +117,45 @@ export default function DaftarSiswaPage() {
         </div>
       </div>
 
-      {/* Scrollable & Wider Table */}
-      <div className="overflow-x-auto max-w-7xl mx-auto px-2 sm:px-4">
-        <div className="border border-slate-200 rounded-xl shadow-md max-h-[650px] overflow-y-auto">
-          <table className="min-w-[800px] w-full text-base text-slate-700">
-            <thead className="bg-slate-100 text-slate-800 sticky top-0 z-10">
-              <tr>
-                <th className="text-left px-8 py-4 border-b border-slate-300">Nama</th><th className="text-left px-8 py-4 border-b border-slate-300">Email</th><th className="text-left px-8 py-4 border-b border-slate-300">Kelas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="text-center py-6 text-slate-400">
-                    {loading ? 'Memuat...' : filterClassName ? `Tidak ada siswa di kelas ${filterClassName}.` : 'Belum ada data siswa.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((item, index) => (
-                  <tr
-                    key={item.id}
-                    className={
-                      index % 2 === 0
-                        ? 'bg-white hover:bg-slate-100'
-                        : 'bg-slate-50 hover:bg-slate-100'
-                    }
-                  >
-                    <td className="px-8 py-4 border-b border-slate-200">{item.name}</td><td className="px-8 py-4 border-b border-slate-200">{item.email}</td><td className="px-8 py-4 border-b border-slate-200">{item.classes?.name || 'Belum Ada Kelas'}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Grid Layout for Students */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 px-6 pb-12">
+        {filteredData.length === 0 ? (
+          <div className="col-span-full text-center text-slate-400 py-10">
+            {loading ? 'Memuat...' : filterClassName ? `Tidak ada siswa di kelas ${filterClassName}.` : 'Belum ada data siswa.'}
+          </div>
+        ) : (
+          filteredData.map((siswa) => (
+            <Link
+              key={siswa.id}
+              href="#" // Adjust this if you plan to have student detail pages
+              className="bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
+            >
+              <div className="flex flex-col items-center p-6">
+                {/* Foto Siswa */}
+                <div className="w-32 h-32 relative rounded-full overflow-hidden shadow-lg mb-4">
+                  {siswa.photo_url ? (
+                    <Image
+                      src={siswa.photo_url}
+                      alt={`Foto ${siswa.name}`}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-5xl">
+                      {siswa.name ? siswa.name[0].toUpperCase() : 'S'}
+                    </div>
+                  )}
+                </div>
+                {/* Nama dan Kelas Siswa */}
+                <p className="text-lg font-semibold text-center text-gray-800 mb-1">{siswa.name}</p>
+                <span className="text-sm text-gray-500 text-center">
+                  {siswa.classes?.name ? `Kelas ${siswa.classes.name}` : 'Belum Ada Kelas'}
+                </span>
+              </div>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

@@ -60,10 +60,10 @@ function LihatEkstrakurikulerSiswaContent() {
         if (allParam === 'true') {
           viewingAll = true;
           setIsSuperAdminViewingAll(true);
-          // Super Admin, fetch all students
+          // Super Admin, fetch all students, INCLUDING 'extracurricular_finalized' status
           const { data: allStudents, error: allStudentsError } = await supabase
             .from('users')
-            .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
+            .select('id, name, extracurricular_finalized, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
             .eq('role', 'siswa'); // Get only students
 
           if (allStudentsError) {
@@ -95,10 +95,10 @@ function LihatEkstrakurikulerSiswaContent() {
                 return;
             }
             setFilterClassId(currentClassFilter); // Set filter class ID
-            // Fetch students for this class
+            // Fetch students for this class, INCLUDING 'extracurricular_finalized' status
             const { data: classStudents, error: classStudentsError } = await supabase
                 .from('users')
-                .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
+                .select('id, name, extracurricular_finalized, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
                 .eq('role', 'siswa')
                 .eq('class_id', currentClassFilter);
 
@@ -133,10 +133,10 @@ function LihatEkstrakurikulerSiswaContent() {
         }
         setFilterClassId(currentClassFilter); // Set filter class ID
 
-        // Regular Guru, fetch students only from their assigned class
+        // Regular Guru, fetch students only from their assigned class, INCLUDING 'extracurricular_finalized' status
         const { data: classStudents, error: classStudentsError } = await supabase
           .from('users')
-          .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
+          .select('id, name, extracurricular_finalized, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
           .eq('role', 'siswa')
           .eq('class_id', currentClassFilter);
 
@@ -171,9 +171,9 @@ function LihatEkstrakurikulerSiswaContent() {
           student.student_extracurriculars.map(se => se.extracurricular_id)
         );
 
-        // Map selected extras to their names
-        const selectedExtras = student.student_extracurriculars.map(se => se.extracurriculars.name);
-
+        // Map selected extras to their names, filter out nulls if any (e.g., if extra was deleted)
+        const selectedExtras = student.student_extracurriculars.map(se => se.extracurriculars?.name).filter(Boolean);
+        
         // Filter availableExtrasToFetch based on the student's actual class_id OR if class_id is null (general extra)
         const relevantAvailableExtras = availableExtrasToFetch
             .filter(extra => extra.class_id === student.classes?.id || extra.class_id === null);
@@ -186,8 +186,10 @@ function LihatEkstrakurikulerSiswaContent() {
           id: student.id,
           name: student.name,
           className: student.classes?.name || 'Tidak ada kelas',
-          selected: selectedExtras,
-          unselected: unselectedExtras,
+          // Use extracurricular_finalized from the user's profile
+          isFinalized: student.extracurricular_finalized, 
+          selectedExtras,
+          unselectedExtras, // Keep this for potential future display or logic, even if not displayed
         };
       });
 
@@ -236,7 +238,7 @@ function LihatEkstrakurikulerSiswaContent() {
       </p>
 
       {studentsExtracurricularData.length === 0 ? (
-        <p className="text-gray-500">Tidak ada data siswa atau ekstrakurikuler ditemukan.</p>
+        <p className="text-gray-500">Tidak ada data siswa ditemukan.</p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow-md p-4">
           <table className="min-w-full divide-y divide-gray-200">
@@ -249,10 +251,10 @@ function LihatEkstrakurikulerSiswaContent() {
                   Kelas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ekstrakurikuler Diambil
+                  Status Ekstra
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ekstrakurikuler Belum Diambil
+                  Ekstrakurikuler Diambil
                 </th>
               </tr>
             </thead>
@@ -266,26 +268,17 @@ function LihatEkstrakurikulerSiswaContent() {
                     {student.className}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {student.selected.length > 0 ? (
-                      <ul className="list-disc list-inside">
-                        {student.selected.map((extra, idx) => (
-                          <li key={idx}>{extra}</li>
-                        ))}
-                      </ul>
+                    {student.isFinalized ? (
+                      <span className="text-green-600 font-semibold">Sudah Di Ambil</span>
                     ) : (
-                      <span className="text-gray-500">Belum mengambil ekstra</span>
+                      <span className="text-orange-500 font-semibold">Belum Di Ambil</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {student.unselected.length > 0 ? (
-                      <ul className="list-disc list-inside">
-                        {student.unselected.map((extra, idx) => (
-                          <li key={idx} className="text-red-500">{extra}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="text-green-600">Sudah mengambil semua yang tersedia</span>
-                    )}
+                    {student.selectedExtras.length > 0
+                      ? student.selectedExtras.join(', ')
+                      : <span className="text-gray-400 italic">-</span>
+                    }
                   </td>
                 </tr>
               ))}

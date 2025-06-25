@@ -1,30 +1,44 @@
 // components/Navbar.jsx
-"use client";
+"use client"; // TETAPKAN INI KARENA ANDA PAKAI useState
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+// UBAH IMPORT INI sesuai struktur folder Anda:
+// Jika lib/supabaseClient.js ada di root proyek Anda (seperti di screenshot terakhir):
 import { createClient } from '../lib/supabaseClient';
 
+
 export default function Navbar() {
+  // State untuk mengelola tampilan menu mobile dan dropdown
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfilOpen, setIsProfilOpen] = useState(false); // Untuk dropdown Profil umum & dropdown user mobile
   const [isPengumumanOpen, setIsPengumumanOpen] = useState(false);
 
+  // State untuk data user dari Supabase Auth dan profil kustom
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [userData, setUserData] = useState(null); // Data dari tabel public.users
+  const [loadingUser, setLoadingUser] = useState(true); // Indikator loading data user
+
+  // Inisialisasi Supabase client dan router
   const supabase = createClient();
   const router = useRouter();
 
+  // useEffect untuk mengambil sesi user dan data profil
   useEffect(() => {
     async function getUserSession() {
-      setLoadingUser(true);
-      const { data: { session }, error } = await supabase.auth.getSession();
+      setLoadingUser(true); // Mulai loading
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (session) {
+      if (!session || sessionError) {
+        // Jika tidak ada sesi atau ada error, set user ke null
+        setUser(null);
+        setUserData(null);
+      } else {
+        // Jika ada sesi, set user dari sesi
         setUser(session.user);
+        // Ambil data profil tambahan dari tabel 'users' kita
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('name, role, photo_url, class, position')
@@ -33,21 +47,21 @@ export default function Navbar() {
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError.message);
+          setUserData(null); // Jika ada error, set data profil ke null
         } else {
-          setUserData(profile);
+          setUserData(profile); // Set data profil
         }
-      } else {
-        setUser(null);
-        setUserData(null);
       }
-      setLoadingUser(false);
+      setLoadingUser(false); // Selesai loading
     }
 
-    getUserSession();
+    getUserSession(); // Panggil saat komponen pertama kali di-mount
 
+    // Setup listener untuk perubahan auth state (misal: login/logout di tab lain, token refresh)
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
+        // Ambil ulang profil jika ada perubahan sesi
         supabase
           .from('users')
           .select('name, role, photo_url, class, position')
@@ -64,20 +78,26 @@ export default function Navbar() {
         setUser(null);
         setUserData(null);
       }
+      // router.refresh(); // Opsional: paksa refresh server components di layout jika perlu (kadang tidak perlu jika state di client sudah cukup)
     });
 
+    // Cleanup listener saat komponen di-unmount
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase]); // Dependensi: supabase client
 
+  // Fungsi untuk logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/'); // Kembali ke beranda setelah logout
+    router.push('/'); // Arahkan ke halaman beranda setelah logout
+    // State user dan userData akan diupdate otomatis oleh authListener
   };
 
+  // Fungsi untuk toggle menu mobile
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
+  // Komponen ikon panah untuk dropdown
   const DownArrowIcon = ({ isOpen = false }) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -93,6 +113,7 @@ export default function Navbar() {
     </svg>
   );
 
+  // Data yang akan ditampilkan di UI user dropdown
   const displayName = userData?.name || user?.email;
   const displayRole = userData?.role ? `(${userData.role})` : '';
   const displayClassPosition = userData?.role === 'siswa' && userData?.class
@@ -113,7 +134,7 @@ export default function Navbar() {
             SDN PALEBON 03
           </Link>
 
-          {/* Mobile toggle and menu remain the same */}
+          {/* Mobile toggle with animation */}
           <div className="lg:hidden">
             <button
               onClick={toggleMobileMenu}
@@ -137,6 +158,7 @@ export default function Navbar() {
             </button>
           </div>
 
+          {/* Mobile Menu (Hidden by default on large screens) */}
           <div
             className={`fixed top-0 left-0 min-h-screen w-64 bg-slate-100 shadow-lg transform transition-transform duration-300 ease-in-out ${
               isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
@@ -187,7 +209,6 @@ export default function Navbar() {
               <li><Link href="/lomba" className="hover:text-red-500">Lomba Siswa</Link></li>
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
-
               {/* Login/Logout and Dashboard link for Mobile Menu */}
               <li className="mt-4">
                 {loadingUser ? (
@@ -195,7 +216,7 @@ export default function Navbar() {
                 ) : user ? (
                   <div className="relative">
                     <button
-                      onClick={() => setIsProfilOpen(!isProfilOpen)} // Reuse isProfilOpen for mobile user dropdown toggle
+                      onClick={() => setIsProfilOpen(!isProfilOpen)} // Menggunakan isProfilOpen untuk toggle dropdown user di mobile
                       className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-red-500 transition duration-300 rounded-md focus:outline-none w-full text-left"
                     >
                       {userData?.photo_url && (
@@ -222,6 +243,14 @@ export default function Navbar() {
                             Dashboard
                           </Link>
                         )}
+                        {user && userData?.role === 'admin' && ( // Link khusus Admin Dashboard
+                          <Link
+                            href="/admin/dashboard"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Admin Dashboard
+                          </Link>
+                        )}
                         <button
                           onClick={handleLogout}
                           className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -243,7 +272,7 @@ export default function Navbar() {
             </ul>
           </div>
 
-          {/* Desktop Menu */}
+          {/* Desktop Menu (Hidden by default on small screens) */}
           <div className="hidden lg:flex items-center gap-6 text-lg text-slate-600">
             <ul className="flex items-center gap-6">
               <li><Link href="/" className="hover:text-red-500">Beranda</Link></li>
@@ -332,6 +361,14 @@ export default function Navbar() {
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         Dashboard
+                      </Link>
+                    )}
+                    {user && userData?.role === 'admin' && ( // Link khusus Admin Dashboard
+                      <Link
+                        href="/admin/dashboard"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Admin Dashboard
                       </Link>
                     )}
                     <button

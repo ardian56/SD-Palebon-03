@@ -54,7 +54,8 @@ export async function middleware(request) { // Hapus ': NextRequest'
                        pathname.startsWith('/admin/berita') ||
                        pathname.startsWith('/admin/warta') ||
                        pathname.startsWith('/admin/galeri') ||
-                       pathname.startsWith('/admin/lomba');   
+                       pathname.startsWith('/admin/lomba') ||
+                       pathname.startsWith('/admin/ekstra');   
 
   if (isAdminRoute) {
     console.log('Middleware: Accessing Admin Route:', pathname);

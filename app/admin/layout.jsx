@@ -94,6 +94,7 @@ export default function AdminLayout({ children }) {
             { name: 'Profil Guru', href: '/admin/guru', icon: <Users className="h-4 w-4" /> },              // Contoh: /app/admin/guru/page.jsx
             { name: 'Siswa', href: '/admin/siswa', icon: <BookOpen className="h-4 w-4" /> },              // Contoh: /app/admin/siswa/page.jsx (ubah dari /admin/kelas)
             { name: 'Lomba', href: '/admin/lomba', icon: <Trophy className="h-4 w-4" /> },                 // Contoh: /app/admin/lomba/page.jsx
+            { name: 'Ekstra', href: '/admin/ekstra', icon: <Trophy className="h-4 w-4" /> },                 // Contoh: /app/admin/lomba/page.jsx
           ].map((item) => (
             <a
               key={item.href}

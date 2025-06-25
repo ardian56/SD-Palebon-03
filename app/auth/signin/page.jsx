@@ -86,9 +86,6 @@ export default function UserLoginPage() {
         <button type="submit" disabled={loading} style={{ padding: '10px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
           {loading ? 'Loading...' : 'Login'}
         </button>
-        <button type="button" onClick={handleSignUp} disabled={loading} style={{ padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' }}>
-          {loading ? 'Loading...' : 'Daftar'}
-        </button>
       </form>
       {message && <p style={{ marginTop: '15px', color: message.includes('Error') ? 'red' : 'green' }}>{message}</p>}
     </div>

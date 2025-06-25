@@ -1,70 +1,59 @@
 // components/Navbar.jsx
-"use client"; // TETAPKAN INI KARENA ANDA PAKAI useState
+"use client";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// UBAH IMPORT INI sesuai struktur folder Anda:
-// Jika lib/supabaseClient.js ada di root proyek Anda (seperti di screenshot terakhir):
-import { createClient } from '../lib/supabaseClient';
-
+import { createClient } from '@/lib/supabaseClient'; // Menggunakan alias
 
 export default function Navbar() {
-  // State untuk mengelola tampilan menu mobile dan dropdown
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfilOpen, setIsProfilOpen] = useState(false); // Untuk dropdown Profil umum & dropdown user mobile
+  const [isProfilOpen, setIsProfilOpen] = useState(false);
   const [isPengumumanOpen, setIsPengumumanOpen] = useState(false);
 
-  // State untuk data user dari Supabase Auth dan profil kustom
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null); // Data dari tabel public.users
-  const [loadingUser, setLoadingUser] = useState(true); // Indikator loading data user
+  const [userData, setUserData] = useState(null); // Akan berisi data profil dari public.users
+  const [loadingUser, setLoadingUser] = useState(true);
 
-  // Inisialisasi Supabase client dan router
   const supabase = createClient();
   const router = useRouter();
 
-  // useEffect untuk mengambil sesi user dan data profil
   useEffect(() => {
     async function getUserSession() {
-      setLoadingUser(true); // Mulai loading
+      setLoadingUser(true);
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       if (!session || sessionError) {
-        // Jika tidak ada sesi atau ada error, set user ke null
         setUser(null);
         setUserData(null);
       } else {
-        // Jika ada sesi, set user dari sesi
         setUser(session.user);
-        // Ambil data profil tambahan dari tabel 'users' kita
+        // SELECT YANG BENAR UNTUK MENGAMBIL NAMA KELAS DAN ROLE
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .select('name, role, photo_url, class, position')
+          .select('name, role, photo_url, extracurricular_finalized, classes(name)') // Join ke tabel classes untuk nama kelas
           .eq('id', session.user.id)
           .single();
 
         if (profileError) {
           console.error('Error fetching user profile:', profileError.message);
-          setUserData(null); // Jika ada error, set data profil ke null
+          setUserData(null);
         } else {
-          setUserData(profile); // Set data profil
+          setUserData(profile);
         }
       }
-      setLoadingUser(false); // Selesai loading
+      setLoadingUser(false);
     }
 
-    getUserSession(); // Panggil saat komponen pertama kali di-mount
+    getUserSession();
 
-    // Setup listener untuk perubahan auth state (misal: login/logout di tab lain, token refresh)
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
-        // Ambil ulang profil jika ada perubahan sesi
         supabase
           .from('users')
-          .select('name, role, photo_url, class, position')
+          .select('name, role, photo_url, extracurricular_finalized, classes(name)')
           .eq('id', session.user.id)
           .single()
           .then(({ data: profile, error: profileError }) => {
@@ -78,26 +67,20 @@ export default function Navbar() {
         setUser(null);
         setUserData(null);
       }
-      // router.refresh(); // Opsional: paksa refresh server components di layout jika perlu (kadang tidak perlu jika state di client sudah cukup)
     });
 
-    // Cleanup listener saat komponen di-unmount
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [supabase]); // Dependensi: supabase client
+  }, [supabase]);
 
-  // Fungsi untuk logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/'); // Arahkan ke halaman beranda setelah logout
-    // State user dan userData akan diupdate otomatis oleh authListener
+    router.push('/');
   };
 
-  // Fungsi untuk toggle menu mobile
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
-  // Komponen ikon panah untuk dropdown
   const DownArrowIcon = ({ isOpen = false }) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -113,14 +96,11 @@ export default function Navbar() {
     </svg>
   );
 
-  // Data yang akan ditampilkan di UI user dropdown
   const displayName = userData?.name || user?.email;
   const displayRole = userData?.role ? `(${userData.role})` : '';
-  const displayClassPosition = userData?.role === 'siswa' && userData?.class
-    ? `Kelas: ${userData.class}`
-    : userData?.role === 'guru' && userData?.position
-    ? `Jabatan: ${userData.position}`
-    : '';
+  // MENGAKSES NAMA KELAS DARI OBJEK JOIN 'classes'
+  // userData.classes akan menjadi objek { name: 'Nama Kelas' } jika join berhasil
+  const displayClassInfo = userData?.classes?.name ? `Kelas: ${userData.classes.name}` : '';
 
 
   return (
@@ -134,48 +114,20 @@ export default function Navbar() {
             SDN PALEBON 03
           </Link>
 
-          {/* Mobile toggle with animation */}
+          {/* Mobile toggle and menu */}
           <div className="lg:hidden">
-            <button
-              onClick={toggleMobileMenu}
-              className="relative w-8 h-8 focus:outline-none flex flex-col justify-center items-center"
-            >
-              <span
-                className={`block w-8 h-0.5 bg-slate-800 transform transition duration-300 ease-in-out ${
-                  isMobileMenuOpen ? "rotate-45 translate-y-1.5" : ""
-                }`}
-              />
-              <span
-                className={`block w-8 h-0.5 bg-slate-800 my-1 transition-all duration-300 ease-in-out ${
-                  isMobileMenuOpen ? "opacity-0" : "opacity-100"
-                }`}
-              />
-              <span
-                className={`block w-8 h-0.5 bg-slate-800 transform transition duration-300 ease-in-out ${
-                  isMobileMenuOpen ? "-rotate-45 -translate-y-1.5" : ""
-                }`}
-              />
+            <button onClick={toggleMobileMenu} className="relative w-8 h-8 focus:outline-none flex flex-col justify-center items-center">
+              <span className={`block w-8 h-0.5 bg-slate-800 transform transition duration-300 ease-in-out ${isMobileMenuOpen ? "rotate-45 translate-y-1.5" : ""}`} />
+              <span className={`block w-8 h-0.5 bg-slate-800 my-1 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "opacity-0" : "opacity-100"}`} />
+              <span className={`block w-8 h-0.5 bg-slate-800 transform transition duration-300 ease-in-out ${isMobileMenuOpen ? "-rotate-45 -translate-y-1.5" : ""}`} />
             </button>
           </div>
 
-          {/* Mobile Menu (Hidden by default on large screens) */}
-          <div
-            className={`fixed top-0 left-0 min-h-screen w-64 bg-slate-100 shadow-lg transform transition-transform duration-300 ease-in-out ${
-              isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-            } lg:hidden z-50`}
-          >
+          <div className={`fixed top-0 left-0 min-h-screen w-64 bg-slate-100 shadow-lg transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} lg:hidden z-50`}>
             <div className="flex items-center justify-between border-b px-4 py-4">
-              <Link href="/" className="text-red-600 font-bold text-xl">
-                SDN PALEBON 03
-              </Link>
+              <Link href="/" className="text-red-600 font-bold text-xl">SDN PALEBON 03</Link>
               <button onClick={toggleMobileMenu}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -209,6 +161,8 @@ export default function Navbar() {
               <li><Link href="/lomba" className="hover:text-red-500">Lomba Siswa</Link></li>
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
+              <li><Link href="/pengaduan" className="hover:text-red-500">Pengaduan</Link></li>
+
               {/* Login/Logout and Dashboard link for Mobile Menu */}
               <li className="mt-4">
                 {loadingUser ? (
@@ -216,16 +170,10 @@ export default function Navbar() {
                 ) : user ? (
                   <div className="relative">
                     <button
-                      onClick={() => setIsProfilOpen(!isProfilOpen)} // Menggunakan isProfilOpen untuk toggle dropdown user di mobile
+                      onClick={() => setIsProfilOpen(!isProfilOpen)}
                       className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-red-500 transition duration-300 rounded-md focus:outline-none w-full text-left"
                     >
-                      {userData?.photo_url && (
-                        <img
-                          src={userData.photo_url}
-                          alt="Profil"
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      )}
+                      {userData?.photo_url && ( <img src={userData.photo_url} alt="Profil" className="w-8 h-8 rounded-full object-cover" /> )}
                       <span>Halo, {displayName}</span>
                       <DownArrowIcon isOpen={isProfilOpen} />
                     </button>
@@ -233,38 +181,26 @@ export default function Navbar() {
                       <div className="bg-white shadow-lg rounded-md py-1 z-20 w-full">
                         <div className="px-4 py-2 border-b border-gray-100">
                           <p className="text-sm font-semibold">{displayName} {displayRole}</p>
-                          {displayClassPosition && <p className="text-xs text-gray-500">{displayClassPosition}</p>}
+                          {displayClassInfo && <p className="text-xs text-gray-500">{displayClassInfo}</p>}
                         </div>
-                        {user && userData?.role !== 'admin' && ( // Link Dashboard untuk siswa/guru
-                          <Link
-                            href={userData?.role === 'siswa' ? `/siswa/dashboard` : userData?.role === 'guru' ? `/guru/dashboard` : `/dashboard/${user.id}`}
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
+                        {user && userData?.role !== 'admin' && (
+                          <Link href={userData?.role === 'siswa' ? `/siswa/dashboard` : userData?.role === 'guru' ? `/guru/dashboard` : `/dashboard/${user.id}`} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             Dashboard
                           </Link>
                         )}
-                        {user && userData?.role === 'admin' && ( // Link khusus Admin Dashboard
-                          <Link
-                            href="/admin/dashboard"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
+                        {user && userData?.role === 'admin' && (
+                          <Link href="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             Admin Dashboard
                           </Link>
                         )}
-                        <button
-                          onClick={handleLogout}
-                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                        >
+                        <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
                           Logout
                         </button>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <Link
-                    href="/auth/signin"
-                    className="px-4 py-2 text-red-600 border border-red-600 rounded-md hover:bg-red-600 hover:text-white transition duration-300 w-full block text-center"
-                  >
+                  <Link href="/auth/signin" className="px-4 py-2 text-red-600 border border-red-600 rounded-md hover:bg-red-600 hover:text-white transition duration-300 w-full block text-center">
                     Login
                   </Link>
                 )}
@@ -272,21 +208,14 @@ export default function Navbar() {
             </ul>
           </div>
 
-          {/* Desktop Menu (Hidden by default on small screens) */}
+          {/* Desktop Menu */}
           <div className="hidden lg:flex items-center gap-6 text-lg text-slate-600">
             <ul className="flex items-center gap-6">
               <li><Link href="/" className="hover:text-red-500">Beranda</Link></li>
               <li className="relative group">
                 <button className="hover:text-red-500 flex items-center">
                   Profil
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4 ml-1 transform transition-transform duration-300 group-hover:rotate-180"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-1 transform transition-transform duration-300 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -300,14 +229,7 @@ export default function Navbar() {
               <li className="relative group">
                 <button className="hover:text-red-500 flex items-center">
                   Pengumuman
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4 ml-1 transform transition-transform duration-300 group-hover:rotate-180"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-1 transform transition-transform duration-300 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -319,6 +241,7 @@ export default function Navbar() {
               <li><Link href="/lomba" className="hover:text-red-500">Lomba Siswa</Link></li>
               <li><Link href="/ppdb" className="hover:text-red-500">PPDB</Link></li>
               <li><Link href="/kontak" className="hover:text-red-500">Kontak</Link></li>
+              <li><Link href="/pengaduan" className="hover:text-red-500">Pengaduan</Link></li>
             </ul>
 
             {/* Login/Logout and Dashboard link for Desktop Menu */}
@@ -327,25 +250,10 @@ export default function Navbar() {
                 <div className="text-gray-500">Loading user...</div>
               ) : user ? (
                 <div className="relative group">
-                  <button
-                    className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-red-500 transition duration-300 rounded-md focus:outline-none"
-                  >
-                    {userData?.photo_url && (
-                      <img
-                        src={userData.photo_url}
-                        alt="Profil"
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    )}
+                  <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-red-500 transition duration-300 rounded-md focus:outline-none">
+                    {userData?.photo_url && ( <img src={userData.photo_url} alt="Profil" className="w-8 h-8 rounded-full object-cover" /> )}
                     <span>Halo, {displayName}</span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4 ml-1 transform transition-transform duration-300 group-hover:rotate-180"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-1 transform transition-transform duration-300 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
@@ -353,37 +261,25 @@ export default function Navbar() {
                   <ul className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-20">
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-sm font-semibold">{displayName} {displayRole}</p>
-                      {displayClassPosition && <p className="text-xs text-gray-500">{displayClassPosition}</p>}
+                      {displayClassInfo && <p className="text-xs text-gray-500">{displayClassInfo}</p>}
                     </div>
-                    {user && userData?.role !== 'admin' && ( // Link Dashboard untuk siswa/guru
-                      <Link
-                        href={userData?.role === 'siswa' ? `/siswa/dashboard` : userData?.role === 'guru' ? `/guru/dashboard` : `/dashboard/${user.id}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
+                    {user && userData?.role !== 'admin' && (
+                      <Link href={userData?.role === 'siswa' ? `/siswa/dashboard` : userData?.role === 'guru' ? `/guru/dashboard` : `/dashboard/${user.id}`} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         Dashboard
                       </Link>
                     )}
-                    {user && userData?.role === 'admin' && ( // Link khusus Admin Dashboard
-                      <Link
-                        href="/admin/dashboard"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
+                    {user && userData?.role === 'admin' && (
+                      <Link href="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         Admin Dashboard
                       </Link>
                     )}
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                    >
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
                       Logout
                     </button>
                   </ul>
                 </div>
               ) : (
-                <Link
-                  href="/auth/signin"
-                  className="px-4 py-2 text-red-600 border border-red-600 rounded-md hover:bg-red-600 hover:text-white transition duration-300"
-                >
+                <Link href="/auth/signin" className="px-4 py-2 text-red-600 border border-red-600 rounded-md hover:bg-red-600 hover:text-white transition duration-300">
                   Login
                 </Link>
               )}

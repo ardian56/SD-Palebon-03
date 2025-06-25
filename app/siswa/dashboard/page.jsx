@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '../../../lib/supabaseClient'; // Path disesuaikan
+import { createClient } from '@/lib/supabaseClient'; // Path disesuaikan
 
 export default function SiswaDashboard() {
   const router = useRouter();
@@ -12,11 +12,11 @@ export default function SiswaDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null); // Akan berisi extracurricular_finalized
-  const [selectedExtracurriculars, setSelectedExtracurriculars] = useState([]); // Ekstra yang sudah dipilih siswa
+  const [userData, setUserData] = useState(null); // Akan berisi extracurricular_finalized, photo_url, dan classes(name)
+  const [selectedExtracurriculars, setSelectedExtracurriculars] = useState([]);
   const [message, setMessage] = useState('');
 
-  const fetchData = async () => { // Fungsi ini dibuat terpisah agar bisa dipanggil ulang
+  const fetchData = async () => {
     setLoading(true);
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -27,10 +27,11 @@ export default function SiswaDashboard() {
 
     setUser(session.user);
 
-    // 1. Ambil data profil pengguna (termasuk status finalisasi)
+    // 1. Ambil data profil pengguna dan NAMA KELAS DARI JOIN TABEL CLASSES
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('name, role, class, photo_url, extracurricular_finalized') // Ambil status finalisasi
+      // === PERBAIKI BAGIAN SELECT INI ===
+      .select('name, role, photo_url, extracurricular_finalized, classes(name)') // Join ke tabel classes untuk nama kelas
       .eq('id', session.user.id)
       .single();
 
@@ -42,10 +43,10 @@ export default function SiswaDashboard() {
     }
     setUserData(profile);
 
-    // 2. Ambil ekstra yang sudah dipilih oleh siswa ini
+    // Ambil ekstra yang sudah dipilih oleh siswa ini
     const { data: userExtras, error: userExtrasError } = await supabase
       .from('student_extracurriculars')
-      .select('extracurricular_id, extracurriculars(name)') // Join untuk dapat nama ekstra
+      .select('extracurricular_id, extracurriculars(name)')
       .eq('user_id', session.user.id);
 
     if (userExtrasError) {
@@ -61,7 +62,6 @@ export default function SiswaDashboard() {
   useEffect(() => {
     fetchData();
 
-    // Listener untuk perubahan data ekstrakurikuler siswa (optional, real-time updates)
     const extraSubscription = supabase
       .channel('student_extracurriculars_dashboard_changes')
       .on(
@@ -69,22 +69,19 @@ export default function SiswaDashboard() {
         { event: '*', schema: 'public', table: 'student_extracurriculars', filter: `user_id=eq.${user?.id}` },
         payload => {
             console.log('Extra change received on dashboard!', payload);
-            fetchData(); // Panggil ulang data jika ada perubahan (insert/delete)
+            fetchData();
         }
       )
       .subscribe();
 
-    // Listener untuk perubahan status finalisasi pengguna (jika admin mengubahnya)
     const profileSubscription = supabase
       .channel('user_profile_dashboard_finalized_changes')
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user?.id}` },
         payload => {
-            if (payload.new.extracurricular_finalized !== payload.old.extracurricular_finalized) {
-                console.log('Finalization status changed on dashboard:', payload.new.extracurricular_finalized);
-                setUserData(prev => ({ ...prev, extracurricular_finalized: payload.new.extracurricular_finalized }));
-            }
+            // Panggil ulang fetchData untuk memastikan data join terbaru (nama kelas)
+            fetchData();
         }
       )
       .subscribe();
@@ -96,12 +93,7 @@ export default function SiswaDashboard() {
 
   }, [router, supabase, user?.id]);
 
-
-  if (loading) {
-    return <div className="text-center p-8 text-gray-700">Memuat informasi dashboard...</div>;
-  }
-
-  const isFinalized = userData?.extracurricular_finalized; // Ambil status finalisasi
+  const isFinalized = userData?.extracurricular_finalized;
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl">
@@ -129,13 +121,15 @@ export default function SiswaDashboard() {
           <div className="text-center md:text-left">
             <h2 className="text-2xl font-semibold text-gray-700">{userData.name}</h2>
             <p className="text-gray-600 mt-1">Role: <span className="font-medium capitalize">{userData.role}</span></p>
-            {userData.class && <p className="text-gray-600">Kelas: <span className="font-medium">{userData.class}</span></p>}
+            {/* AKSES NAMA KELAS DARI OBJEK JOIN 'classes' */}
+            {userData.classes?.name && <p className="text-gray-600">Kelas: <span className="font-medium">{userData.classes.name}</span></p>}
             {user.email && <p className="text-gray-600">Email: <span className="font-medium">{user.email}</span></p>}
           </div>
         </div>
       )}
 
-      {/* Bagian Informasi Ekstrakurikuler yang Dipilih */}
+      {/* ... (sisa kode komponen sama) ... */}
+
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <h2 className="text-xl font-semibold text-gray-700 mb-4">Ekstrakurikuler Pilihan Anda</h2>
         {isFinalized && (
@@ -157,8 +151,6 @@ export default function SiswaDashboard() {
         )}
       </div>
 
-
-      {/* Bagian Tombol Aksi */}
       <div className="bg-white p-6 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link href="/siswa/ekstra" className="block">
           <button className="w-full bg-blue-600 text-white p-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2">

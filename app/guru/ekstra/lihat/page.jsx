@@ -1,13 +1,15 @@
 // app/guru/ekstra/lihat/page.jsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react'; // Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabaseClient'; // Adjust path as needed
 
-export default function LihatEkstrakurikulerSiswa() {
+// Define a separate component to hold the logic that uses useSearchParams
+// This is the common pattern to address the Suspense boundary error.
+function LihatEkstrakurikulerSiswaContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // This hook is now inside a client-side component rendered within Suspense
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,8 @@ export default function LihatEkstrakurikulerSiswa() {
   const [message, setMessage] = useState('');
   const [studentsExtracurricularData, setStudentsExtracurricularData] = useState([]);
   const [filterClassId, setFilterClassId] = useState(null); // Used by regular guru
-  const [isGuruBkViewingAll, setIsGuruBkViewingAll] = useState(false); // Used by guru BK
+  const [isSuperAdminViewingAll, setIsSuperAdminViewingAll] = useState(false); // Used by super admin (renamed from isGuruBkViewingAll)
+
 
   useEffect(() => {
     const checkUserAndFetchData = async () => {
@@ -38,7 +41,7 @@ export default function LihatEkstrakurikulerSiswa() {
         .eq('id', session.user.id)
         .single();
 
-      if (profileError || (!profile?.role.includes('guru'))) { // Allow both 'guru' and 'guru_bk'
+      if (profileError || (!['guru', 'super_admin'].includes(profile?.role))) { // Allow both 'guru' and 'super_admin'
         setMessage('Akses ditolak: Anda tidak memiliki izin untuk melihat halaman ini.');
         await supabase.auth.signOut();
         router.push('/');
@@ -52,12 +55,12 @@ export default function LihatEkstrakurikulerSiswa() {
       let viewingAll = false;
 
       // Determine data fetching strategy based on role and URL parameters
-      if (profile.role === 'guru_bk') {
+      if (profile.role === 'super_admin') {
         const allParam = searchParams.get('all');
         if (allParam === 'true') {
           viewingAll = true;
-          setIsGuruBkViewingAll(true);
-          // Guru BK, fetch all students
+          setIsSuperAdminViewingAll(true);
+          // Super Admin, fetch all students
           const { data: allStudents, error: allStudentsError } = await supabase
             .from('users')
             .select('id, name, classes(name, id), student_extracurriculars(extracurricular_id, extracurriculars(name))')
@@ -70,10 +73,10 @@ export default function LihatEkstrakurikulerSiswa() {
           }
           studentsToFetch = allStudents;
 
-          // Guru BK, fetch all extracurriculars
+          // Super Admin, fetch all extracurriculars (regardless of class_id being null or specific)
           const { data: allExtras, error: allExtrasError } = await supabase
             .from('extracurriculars')
-            .select('id, name, class_id'); // Get all extras for comparison
+            .select('id, name, description, class_id'); // Get all extras for comparison
 
           if (allExtrasError) {
             setMessage('Error fetching all extracurriculars: ' + allExtrasError.message);
@@ -83,11 +86,11 @@ export default function LihatEkstrakurikulerSiswa() {
           availableExtrasToFetch = allExtras;
 
         } else {
-            // If guru BK somehow lands here without 'all=true', default to their own class if they have one
+            // If super admin somehow lands here without 'all=true', default to their own class if they have one
             // This case might be less likely with the new dashboard links.
             currentClassFilter = profile.classes?.id;
             if (!currentClassFilter) {
-                setMessage('Guru BK harus melihat semua siswa atau guru tidak memiliki kelas yang diampu.');
+                setMessage('Super Admin harus melihat semua siswa atau super admin tidak memiliki kelas yang diampu.');
                 setLoading(false);
                 return;
             }
@@ -109,8 +112,8 @@ export default function LihatEkstrakurikulerSiswa() {
             // Fetch extracurriculars specific to this class
             const { data: classExtras, error: classExtrasError } = await supabase
                 .from('extracurriculars')
-                .select('id, name, class_id')
-                .eq('class_id', currentClassFilter);
+                .select('id, name, description, class_id')
+                .or(`class_id.eq.${currentClassFilter},class_id.is.null`); // Also include general extras
 
             if (classExtrasError) {
                 setMessage('Error fetching class extracurriculars: ' + classExtrasError.message);
@@ -144,11 +147,11 @@ export default function LihatEkstrakurikulerSiswa() {
         }
         studentsToFetch = classStudents;
 
-        // Regular Guru, fetch extracurriculars specific to their class
+        // Regular Guru, fetch extracurriculars specific to their class (and general ones)
         const { data: classExtras, error: classExtrasError } = await supabase
           .from('extracurriculars')
-          .select('id, name, class_id')
-          .eq('class_id', currentClassFilter);
+          .select('id, name, description, class_id')
+          .or(`class_id.eq.${currentClassFilter},class_id.is.null`); // Include general extras as well
 
         if (classExtrasError) {
           setMessage('Error fetching class extracurriculars: ' + classExtrasError.message);
@@ -168,14 +171,12 @@ export default function LihatEkstrakurikulerSiswa() {
           student.student_extracurriculars.map(se => se.extracurricular_id)
         );
 
+        // Map selected extras to their names
         const selectedExtras = student.student_extracurriculars.map(se => se.extracurriculars.name);
 
-        // Filter availableExtrasToFetch based on the student's class (if applicable)
-        // If it's a guru BK viewing all, then availableExtrasToFetch might be all extras
-        // If it's class-specific, filter by class_id of the student's class
-        const relevantAvailableExtras = viewingAll
-            ? availableExtrasToFetch.filter(extra => extra.class_id === student.classes?.id)
-            : availableExtrasToFetch.filter(extra => extra.class_id === currentClassFilter); // Or student.classes?.id if more dynamic
+        // Filter availableExtrasToFetch based on the student's actual class_id OR if class_id is null (general extra)
+        const relevantAvailableExtras = availableExtrasToFetch
+            .filter(extra => extra.class_id === student.classes?.id || extra.class_id === null);
 
         const unselectedExtras = relevantAvailableExtras
           .filter(extra => !studentSelectedExtraIds.has(extra.id))
@@ -214,7 +215,7 @@ export default function LihatEkstrakurikulerSiswa() {
       </div>
     );
   }
-      
+
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
       <button
@@ -225,10 +226,10 @@ export default function LihatEkstrakurikulerSiswa() {
       </button>
       <h1 className="text-3xl font-bold mb-6 text-gray-800">
         Daftar Ekstrakurikuler Siswa
-        {isGuruBkViewingAll ? " (Semua Kelas)" : userData?.classes?.name ? ` (${userData.classes.name})` : ''}
+        {isSuperAdminViewingAll ? " (Semua Kelas)" : userData?.classes?.name ? ` (${userData.classes.name})` : ''}
       </h1>
       <p className="text-gray-600 mb-6">
-        {userData?.role === 'guru_bk' ?
+        {userData?.role === 'super_admin' ?
          'Anda melihat daftar ekstrakurikuler semua siswa.' :
          `Anda melihat daftar ekstrakurikuler siswa di kelas ${userData?.classes?.name || ''}.`
         }
@@ -293,5 +294,19 @@ export default function LihatEkstrakurikulerSiswa() {
         </div>
       )}
     </div>
+  );
+}
+
+
+// The main page component that renders the content wrapped in Suspense
+export default function LihatEkstrakurikulerSiswaPage() {
+  return (
+    <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="text-blue-600 text-lg">Memuat halaman Ekstrakurikuler Siswa...</div>
+        </div>
+    }>
+      <LihatEkstrakurikulerSiswaContent />
+    </Suspense>
   );
 }

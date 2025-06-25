@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image'; // Tambahkan ini
 import { createClient } from '@/lib/supabaseClient'; // Path disesuaikan
 
 export default function SiswaDashboard() {
@@ -116,16 +117,18 @@ export default function SiswaDashboard() {
       {userData && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-col items-center md:flex-row md:items-start md:space-x-6">
           {userData.photo_url ? (
-            <img
-              src={userData.photo_url}
-              alt="Foto Profil"
-              className="w-32 h-32 rounded-full object-cover border-4 border-blue-200 mb-4 md:mb-0"
-            />
-          ) : (
-            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-6xl mb-4 md:mb-0">
-              {userData.name ? userData.name[0].toUpperCase() : '?'}
-            </div>
-          )}
+              <Image // <--- Ganti <img> menjadi <Image>
+                src={userData.photo_url}
+                alt="Foto Profil"
+                width={128} // <--- Tambahkan width (w-32 = 128px)
+                height={128} // <--- Tambahkan height (h-32 = 128px)
+                className="w-32 h-32 rounded-full object-cover border-4 border-blue-200 mb-4 md:mb-0"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-6xl mb-4 md:mb-0">
+                {userData.name ? userData.name[0].toUpperCase() : '?'}
+              </div>
+            )}
           <div className="text-center md:text-left">
             <h2 className="text-2xl font-semibold text-gray-700">{userData.name}</h2>
             <p className="text-gray-600 mt-1">Role: <span className="font-medium capitalize">{userData.role}</span></p>

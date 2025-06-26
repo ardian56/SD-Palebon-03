@@ -49,27 +49,23 @@ export default function GuruDashboard() {
   useEffect(() => {
     fetchData(); // Fetch data on component mount
 
-    // --- Real-time Subscriptions (Optional but good practice) ---
-    // Listen for changes to the teacher's profile (e.g., if their role or class assignment changes)
     const profileSubscription = supabase
       .channel('user_profile_guru_dashboard_changes')
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user?.id}` },
         payload => {
-            // Re-fetch data if the teacher's profile is updated
             console.log('Teacher profile change received!', payload);
             fetchData();
         }
       )
       .subscribe();
 
-    // Cleanup subscriptions on component unmount
     return () => {
       profileSubscription.unsubscribe();
     };
 
-  }, [router, supabase, user?.id]); // Dependencies: router, supabase instance, and user.id for filter
+  }, [router, supabase, user?.id]);
 
   if (loading) {
     return (
@@ -81,16 +77,14 @@ export default function GuruDashboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Dashboard Guru</h1>
+      <h1 className="text-3xl font-bold mb-6 text-white-800">Dashboard Guru</h1>
 
-      {/* Message Display Area */}
       {message && (
         <p className={`mb-4 p-3 rounded ${message.includes('Akses ditolak') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
           {message}
         </p>
       )}
 
-      {/* Teacher Profile Card */}
       {userData && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-col items-center md:flex-row md:items-start md:space-x-6">
           {userData.photo_url ? (
@@ -107,17 +101,15 @@ export default function GuruDashboard() {
           <div className="text-center md:text-left">
             <h2 className="text-2xl font-semibold text-gray-700">{userData.name}</h2>
             <p className="text-gray-600 mt-1">Role: <span className="font-medium capitalize">{userData.role}</span></p>
-            {/* Display the class name(s) the teacher is associated with */}
             {userData.classes?.name && <p className="text-gray-600">Mengajar Kelas: <span className="font-medium">{userData.classes.name}</span></p>}
             {user.email && <p className="text-gray-600">Email: <span className="font-medium">{user.email}</span></p>}
           </div>
         </div>
       )}
 
-      {/* Action Buttons for Teachers */}
       <div className="bg-white p-6 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Button to manage attendance */}
-        <Link href={`/guru/absen?classId=${userData?.classes?.id || ''}`} className="block">
+        {/* --- MODIFICATION START --- */}
+        <Link href={`/guru/absen`} className="block">
           <button className="w-full bg-green-600 text-white p-4 rounded-lg shadow-md hover:bg-green-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -125,8 +117,8 @@ export default function GuruDashboard() {
             <span>Kelola Absensi</span>
           </button>
         </Link>
+        {/* --- MODIFICATION END --- */}
 
-        {/* Conditional button for viewing extracurriculars for regular guru */}
         {userData?.role === 'guru' && (
             <Link href={`/guru/ekstra/lihat?classId=${userData?.classes?.id || ''}`} className="block">
                 <button className="w-full bg-indigo-600 text-white p-4 rounded-lg shadow-md hover:bg-indigo-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2">
@@ -138,7 +130,6 @@ export default function GuruDashboard() {
                 </button>
             </Link>
         )}
-        {/* Button to add new class materials */}
         <Link href={`/guru/tugas?classId=${userData?.classes?.id || ''}`} className="block">
           <button className="w-full bg-purple-600 text-white p-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

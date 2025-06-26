@@ -226,7 +226,7 @@ function LihatEkstrakurikulerSiswaContent() {
       >
         &larr; Kembali ke Dashboard
       </button>
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+      <h1 className="text-3xl font-bold mb-6 text-white-800">
         Daftar Ekstrakurikuler Siswa
         {isSuperAdminViewingAll ? " (Semua Kelas)" : userData?.classes?.name ? ` (${userData.classes.name})` : ''}
       </h1>
@@ -238,7 +238,7 @@ function LihatEkstrakurikulerSiswaContent() {
       </p>
 
       {studentsExtracurricularData.length === 0 ? (
-        <p className="text-gray-500">Tidak ada data siswa ditemukan.</p>
+        <p className="text-white-500">Tidak ada data siswa ditemukan.</p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow-md p-4">
           <table className="min-w-full divide-y divide-gray-200">

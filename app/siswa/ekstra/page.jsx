@@ -216,9 +216,9 @@ export default function PilihEkstrakurikuler() {
         Kembali ke Dashboard
       </Link>
 
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Pilih Ekstrakurikuler</h1>
+      <h1 className="text-3xl font-bold mb-6 text-white-800">Pilih Ekstrakurikuler</h1>
       {userData && (
-          <p className="text-gray-600 mb-4">Halo <span className="font-medium">{userData.name}</span>, silakan kelola pilihan ekstrakurikuler Anda.</p>
+          <p className="text-white-600 mb-4">Halo <span className="font-medium">{userData.name}</span>, silakan kelola pilihan ekstrakurikuler Anda.</p>
       )}
 
       {message && (

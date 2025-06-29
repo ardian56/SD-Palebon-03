@@ -76,8 +76,9 @@ export default function GuruDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-white-800">Dashboard Guru</h1>
+    <div className="w-full bg-gray-100">
+      <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Dashboard Guru</h1>
 
       {message && (
         <p className={`mb-4 p-3 rounded ${message.includes('Akses ditolak') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -141,6 +142,7 @@ export default function GuruDashboard() {
         </Link>
         {/* Removed old "Buat Tugas Baru" and "Lihat Tugas & Pengumpulan" buttons */}
       </div>
+    </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ function LihatPengumpulanContent() {
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState(null); // Data profil guru
   const [assignment, setAssignment] = useState(null);
   const [studentsWithSubmissionStatus, setStudentsWithSubmissionStatus] = useState([]);
   const [message, setMessage] = useState('');
@@ -65,8 +65,9 @@ function LihatPengumpulanContent() {
       }
 
       // Validasi akses guru ke tugas ini
-      if (profile.role === 'guru' && fetchedAssignment.created_by !== session.user.id) {
-          setMessage('Akses ditolak: Anda tidak membuat tugas ini.');
+      // Guru biasa hanya bisa melihat tugas yang dibuatnya atau tugas di kelas yang dia ampu
+      if (profile.role === 'guru' && fetchedAssignment.created_by !== session.user.id && fetchedAssignment.class_id !== profile.class_id) {
+          setMessage('Akses ditolak: Anda tidak membuat tugas ini atau tidak mengajar kelas ini.');
           setLoading(false);
           return;
       }
@@ -77,7 +78,7 @@ function LihatPengumpulanContent() {
         .from('users')
         .select('id, name')
         .eq('role', 'siswa')
-        .eq('class_id', fetchedAssignment.class_id);
+        .eq('class_id', fetchedAssignment.class_id); // Filter siswa berdasarkan class_id tugas
 
       if (studentsError) {
         setMessage('Error fetching students: ' + studentsError.message);
@@ -122,8 +123,10 @@ function LihatPengumpulanContent() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'student_submissions', filter: `assignment_id=eq.${assignmentId}` },
         payload => {
-          console.log('Submission change for this assignment detected!', payload);
-          fetchData(); // Muat ulang data saat ada perubahan pengumpulan
+          if (payload.new.user_id === user?.id) { // Hanya update jika perubahan dari siswa ini
+            console.log('Submission change for this assignment detected!', payload);
+            fetchData(); // Muat ulang data saat ada perubahan pengumpulan
+          }
         }
       )
       .subscribe();
@@ -132,7 +135,8 @@ function LihatPengumpulanContent() {
       submissionChanges.unsubscribe();
     };
 
-  }, [router, supabase, assignmentId, user?.id]); // Pastikan assignmentId dan user?.id di dependencies
+  }, [router, supabase, assignmentId, user?.id]);
+
 
   if (loading) {
     return (
@@ -142,13 +146,18 @@ function LihatPengumpulanContent() {
     );
   }
 
-  if (message) {
+  // Pesan error jika assignment atau student tidak ditemukan atau akses ditolak
+  if (message) { // Ubah kondisi ini agar selalu menampilkan pesan jika ada
     return (
       <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
         <p className="mb-4 p-3 rounded bg-red-100 text-red-700">
           {message}
         </p>
-        <Link href="/guru/materi-dan-tugas" className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4">
+        {/* Tombol kembali akan membawa ke /guru/materi-dan-tugas dengan classId yang sesuai */}
+        <Link
+          href={`/guru/materi-dan-tugas?classId=${assignment?.class_id || userData?.class_id || ''}`}
+          className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4"
+        >
             &larr; Kembali ke Materi & Tugas Kelas
         </Link>
       </div>
@@ -156,17 +165,23 @@ function LihatPengumpulanContent() {
   }
 
   if (!assignment) {
-      return null; // Akan ditangani oleh pesan error di atas
+      return null; // Ini mencegah render jika assignment belum dimuat tetapi tidak ada pesan error spesifik
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <Link href="/guru/materi-dan-tugas" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+    <div className="w-full bg-gray-100">
+      <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
+      {/* --- PERUBAHAN DI SINI --- */}
+      <Link
+        href={`/guru/materi-dan-tugas?classId=${assignment.class_id}`}
+        className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
         Kembali ke Materi & Tugas Kelas
       </Link>
+      {/* --- AKHIR PERUBAHAN --- */}
 
       <h1 className="text-3xl font-bold mb-6 text-gray-800">
         Pengumpulan untuk Tugas: "{assignment.title}"
@@ -199,7 +214,7 @@ function LihatPengumpulanContent() {
                     </p>
                     {student.submission.submitted_at && (
                       <p className="text-gray-600 text-xs mb-1">
-                        Pada: {new Date(student.submission.submitted_at).toLocaleString()}
+                        Pada: {new Date(student.submission.submitted_at).toLocaleDateString()}
                       </p>
                     )}
                     {student.submission.grade !== null && (
@@ -226,6 +241,7 @@ function LihatPengumpulanContent() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -172,7 +172,7 @@ export default function SiswaTugasPage() {
   }
 
   return (
-    <div className="w-full bg-gray-100">
+    <div className="w-full min-h-[50vh] bg-gray-100">
       <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
       <Link href="/siswa/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

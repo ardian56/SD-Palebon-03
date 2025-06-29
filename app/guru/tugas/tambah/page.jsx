@@ -1,14 +1,15 @@
 // app/guru/tugas/tambah/page.jsx
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; // Tambahkan useSearchParams
+import { useState, useEffect, Suspense } from 'react'; // Import Suspense
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient'; // Sesuaikan path
 
-export default function AddAssignmentPage() {
+// Pindahkan komponen utama yang menggunakan useSearchParams ke fungsi terpisah
+function AddAssignmentContent() { // Ubah nama fungsi komponen utama
   const router = useRouter();
-  const searchParams = useSearchParams(); // Mengambil search params dari URL
+  const searchParams = useSearchParams(); // Hook ini sekarang aman di dalam Suspense
   const supabase = createClient();
 
   const initialClassId = searchParams.get('classId') || ''; // Ambil classId dari URL
@@ -81,7 +82,7 @@ export default function AddAssignmentPage() {
     };
 
     checkUserAndFetchClasses();
-  }, [router, supabase, initialClassId]); // Tambahkan initialClassId ke dependensi
+  }, [router, supabase, initialClassId]);
 
   const handleFileChange = (e) => {
     setFiles([...e.target.files]);
@@ -103,6 +104,10 @@ export default function AddAssignmentPage() {
       setLoading(false);
       return;
     }
+
+    let fileUrl = null;
+    let fileName = null;
+    let fileType = null;
 
     try {
       // 1. Insert assignment into 'assignments' table
@@ -269,7 +274,7 @@ export default function AddAssignmentPage() {
             id="class"
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
             disabled={userData?.role === 'guru' && userData?.classes?.id && selectedClassId === userData?.classes?.id} // Disable if guru and class is set
           >
@@ -291,7 +296,7 @@ export default function AddAssignmentPage() {
             id="dueDate"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
           />
         </div>
@@ -329,5 +334,18 @@ export default function AddAssignmentPage() {
       </form>
     </div>
     </div>
+  );
+}
+
+// Komponen utama halaman yang membungkus AddAssignmentContent dengan Suspense
+export default function AddAssignmentPageWrapper() { // Ubah nama export default
+  return (
+    <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="text-blue-600 text-lg">Memuat halaman tambah tugas...</div>
+        </div>
+    }>
+      <AddAssignmentContent /> {/* Render komponen inti di sini */}
+    </Suspense>
   );
 }

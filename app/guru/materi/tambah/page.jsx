@@ -1,14 +1,15 @@
 // app/guru/materi/tambah/page.jsx
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useState, useEffect, Suspense } from 'react'; // Import Suspense
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabaseClient'; // Sesuaikan path
+import { createClient } from '../../../../lib/supabaseClient'; // Sesuaikan path
 
-export default function AddMateriPage() {
+// Pindahkan komponen utama yang menggunakan useSearchParams ke fungsi terpisah
+function AddMateriContent() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // Mengambil search params dari URL
+  const searchParams = useSearchParams(); // Hook ini sekarang aman di dalam Suspense
   const supabase = createClient();
 
   const initialClassId = searchParams.get('classId') || ''; // Ambil classId dari URL
@@ -294,5 +295,18 @@ export default function AddMateriPage() {
       </form>
     </div>
     </div>
+  );
+}
+
+// Komponen utama halaman yang membungkus AddMateriContent dengan Suspense
+export default function AddMateriPageWrapper() { // Ubah nama export default
+  return (
+    <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="text-blue-600 text-lg">Memuat halaman tambah materi...</div>
+        </div>
+    }>
+      <AddMateriContent /> {/* Render komponen inti di sini */}
+    </Suspense>
   );
 }

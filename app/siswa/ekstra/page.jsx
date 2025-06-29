@@ -208,6 +208,7 @@ export default function PilihEkstrakurikuler() {
   }
 
   return (
+  <div className="w-full min-h-screen bg-gray-100">
     <div className="container mx-auto p-4 md:p-8 max-w-4xl">
       <Link href="/siswa/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -216,9 +217,9 @@ export default function PilihEkstrakurikuler() {
         Kembali ke Dashboard
       </Link>
 
-      <h1 className="text-3xl font-bold mb-6 text-white-800">Pilih Ekstrakurikuler</h1>
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Pilih Ekstrakurikuler</h1>
       {userData && (
-          <p className="text-white-600 mb-4">Halo <span className="font-medium">{userData.name}</span>, silakan kelola pilihan ekstrakurikuler Anda.</p>
+          <p className="text-gray-600 mb-4">Halo <span className="font-medium">{userData.name}</span>, silakan kelola pilihan ekstrakurikuler Anda.</p>
       )}
 
       {message && (
@@ -231,6 +232,7 @@ export default function PilihEkstrakurikuler() {
           <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
               <p className="font-bold">Pilihan Anda Sudah Difinalisasi!</p>
               <p>Anda tidak dapat lagi mengubah pilihan ekstrakurikuler. Silakan hubungi admin jika ada perubahan mendesak.</p>
+              <p>Bisa Hubungi Guru BK : 08111111111</p>
           </div>
       )}
 
@@ -292,14 +294,15 @@ export default function PilihEkstrakurikuler() {
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
             <button
                 onClick={handleFinalizeChoices}
-                className="bg-purple-600 text-white p-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2 mx-auto"
+                className="bg-orange-600 text-white p-4 rounded-lg shadow-md hover:bg-red-700 transition-colors text-lg font-semibold flex items-center justify-center space-x-2 mx-auto"
                 disabled={loading}
             >
-                {loading ? 'Memproses...' : 'Finalisasi Pilihan Ekstrakurikuler'}
+                {loading ? 'Memproses...' : 'Finalisasi Pilihan'}
             </button>
             <p className="text-sm text-gray-500 mt-2">Setelah difinalisasi, pilihan tidak bisa diubah.</p>
         </div>
       )}
     </div>
+  </div>
   );
 }

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, Suspense } from 'react'; // Import Suspense
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient'; // Adjust path as needed
 
 // Define a separate component to hold the logic that uses useSearchParams
@@ -219,14 +220,15 @@ function LihatEkstrakurikulerSiswaContent() {
   }
 
   return (
+  <div className="w-full min-h-screen bg-gray-100">
     <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <button
-        className="mb-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-        onClick={() => router.push('/guru/dashboard')}
-      >
-        &larr; Kembali ke Dashboard
-      </button>
-      <h1 className="text-3xl font-bold mb-6 text-white-800">
+      <Link href="/guru/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Kembali ke Dashboard
+      </Link>
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
         Daftar Ekstrakurikuler Siswa
         {isSuperAdminViewingAll ? " (Semua Kelas)" : userData?.classes?.name ? ` (${userData.classes.name})` : ''}
       </h1>
@@ -238,7 +240,7 @@ function LihatEkstrakurikulerSiswaContent() {
       </p>
 
       {studentsExtracurricularData.length === 0 ? (
-        <p className="text-white-500">Tidak ada data siswa ditemukan.</p>
+        <p className="text-gray-500">Tidak ada data siswa ditemukan.</p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow-md p-4">
           <table className="min-w-full divide-y divide-gray-200">
@@ -286,9 +288,12 @@ function LihatEkstrakurikulerSiswaContent() {
           </table>
         </div>
       )}
-    </div>
+      </div>
+  </div>
   );
 }
+  
+
 
 
 // The main page component that renders the content wrapped in Suspense

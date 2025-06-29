@@ -17,6 +17,7 @@ export default function AdminSiswaPage() {
   const [editId, setEditId] = useState(null);
   const [classesOptions, setClassesOptions] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState('');
+  const [extracurricularFinalized, setExtracurricularFinalized] = useState(false);
 
   const supabase = createClient();
 
@@ -38,7 +39,7 @@ export default function AdminSiswaPage() {
 
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name, email, role, photo_url, classes(id, name), class_id')
+        .select('id, name, email, role, photo_url, extracurricular_finalized, classes(id, name), class_id')
         .eq('role', 'siswa')
         .order('name', { ascending: true });
 
@@ -94,6 +95,7 @@ export default function AdminSiswaPage() {
         const updateData = {
           name: nama,
           class_id: classToStore,
+          extracurricular_finalized: extracurricularFinalized,
           ...(photoUrl && { photo_url: photoUrl }),
         };
 
@@ -121,6 +123,7 @@ export default function AdminSiswaPage() {
             role: 'siswa',
             class_id: classToStore,
             photo_url: photoUrl,
+            extracurricular_finalized: false, // Otomatis false untuk siswa baru
           }),
         });
 
@@ -148,6 +151,7 @@ export default function AdminSiswaPage() {
     setPasswordInput('');
     setFotoFile(null);
     setSelectedClassId('');
+    setExtracurricularFinalized(false);
     setEditId(null);
     setIsEditing(false);
     setShowForm(false);
@@ -190,6 +194,7 @@ export default function AdminSiswaPage() {
     setNama(item.name);
     setEmailInput(item.email);
     setSelectedClassId(item.class_id || '');
+    setExtracurricularFinalized(item.extracurricular_finalized || false);
     setFotoFile(null);
     setPasswordInput('');
     setShowForm(true);
@@ -256,6 +261,19 @@ export default function AdminSiswaPage() {
                 <option key={cls.id} value={cls.id}>{cls.name}</option>
               ))}
             </select>
+            {isEditing && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Status Ekstrakurikuler:</label>
+                <select
+                  className="bg-[#222] border border-gray-600 text-white px-3 py-2 rounded w-full"
+                  value={extracurricularFinalized}
+                  onChange={(e) => setExtracurricularFinalized(e.target.value === 'true')}
+                >
+                  <option value="false">Belum Difinalisasi</option>
+                  <option value="true">Sudah Difinalisasi</option>
+                </select>
+              </div>
+            )}
             <div>
                 <label className="block text-sm text-gray-400 mb-1">Foto Profil (Opsional):</label>
                 <input
@@ -302,18 +320,35 @@ export default function AdminSiswaPage() {
         <table className="min-w-full text-sm bg-[#1a1a1a] border border-gray-700">
           <thead className="bg-[#222] text-orange-400">
             <tr>
-              <th className="px-4 py-3 border border-gray-700 text-left">Nama</th><th className="px-4 py-3 border border-gray-700 text-left">Email</th><th className="px-4 py-3 border border-gray-700 text-left">Kelas</th><th className="px-4 py-3 border border-gray-700 text-center">Foto</th><th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Nama</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Email</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Kelas</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Status Ekstra</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Foto</th>
+              <th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan="5" className="text-center text-gray-400 py-4">Belum ada data siswa.</td>
+                <td colSpan="6" className="text-center text-gray-400 py-4">Belum ada data siswa.</td>
               </tr>
             ) : (
               filteredData.map((item, index) => (
                 <tr key={item.id} className={index % 2 === 0 ? 'bg-[#1a1a1a]' : 'bg-[#181818]'}>
-                  <td className="px-4 py-3 border border-gray-700 align-top">{item.name}</td><td className="px-4 py-3 border border-gray-700 align-top">{item.email}</td><td className="px-4 py-3 border border-gray-700 align-top">{item.classes?.name || 'Belum Ada Kelas'}</td><td className="px-4 py-3 border border-gray-700 text-center">
+                  <td className="px-4 py-3 border border-gray-700 align-top">{item.name}</td>
+                  <td className="px-4 py-3 border border-gray-700 align-top">{item.email}</td>
+                  <td className="px-4 py-3 border border-gray-700 align-top">{item.classes?.name || 'Belum Ada Kelas'}</td>
+                  <td className="px-4 py-3 border border-gray-700 text-center">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      item.extracurricular_finalized 
+                        ? 'bg-green-600 text-green-100' 
+                        : 'bg-orange-600 text-orange-100'
+                    }`}>
+                      {item.extracurricular_finalized ? 'Sudah Difinalisasi' : 'Belum Difinalisasi'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 border border-gray-700 text-center">
                     {item.photo_url ? (
                       <Image
                         src={item.photo_url}
@@ -327,7 +362,8 @@ export default function AdminSiswaPage() {
                           {item.name ? item.name[0].toUpperCase() : 'S'}
                       </div>
                     )}
-                  </td><td className="px-4 py-3 border border-gray-700 text-center">
+                  </td>
+                  <td className="px-4 py-3 border border-gray-700 text-center">
                     <div className="flex justify-center gap-2">
                       <button onClick={() => startEdit(item)} className="text-yellow-400 hover:text-yellow-300" title="Edit">
                         <Edit size={18} />

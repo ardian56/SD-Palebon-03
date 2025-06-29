@@ -138,22 +138,23 @@ export default function SiswaDashboard() {
 
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <h2 className="text-xl font-semibold text-gray-700 mb-4">Ekstrakurikuler Pilihan Anda</h2>
-        {isFinalized && (
+        {isFinalized ? (
+          <>
             <p className="text-sm text-green-700 mb-2 font-medium">Status: Pilihan sudah difinalisasi.</p>
-        )}
-        {selectedExtracurriculars.length > 0 ? (
-          <ul className="space-y-2">
-            {selectedExtracurriculars.map((extra) => (
-              <li key={extra.extracurricular_id} className="bg-blue-50 p-3 rounded-md">
-                <span className="text-blue-800 font-medium">{extra.extracurriculars.name}</span>
-              </li>
-            ))}
-          </ul>
+            {selectedExtracurriculars.length > 0 ? (
+              <ul className="space-y-2">
+                {selectedExtracurriculars.map((extra) => (
+                  <li key={extra.extracurricular_id} className="bg-blue-50 p-3 rounded-md">
+                    <span className="text-blue-800 font-medium">{extra.extracurriculars.name}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500">Anda belum memilih ekstrakurikuler.</p>
+            )}
+          </>
         ) : (
-          <p className="text-gray-500">Anda belum memilih ekstrakurikuler.</p>
-        )}
-        {!isFinalized && selectedExtracurriculars.length < 2 && (
-            <p className="text-sm text-gray-600 mt-4">Anda dapat memilih hingga 2 ekstrakurikuler.</p>
+          <p className="text-gray-500">Ekstrakurikuler akan ditampilkan setelah pilihan difinalisasi.</p>
         )}
       </div>
 

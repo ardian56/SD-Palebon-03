@@ -2,8 +2,8 @@
 "use client"; // Ini adalah Client Component
 
 import '../globals.css'; // Pastikan path ini benar dari lokasi layout admin Anda
-import { useState } from 'react'; // Hapus useEffect, user, loading state terkait auth check
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '../../lib/supabaseClient'; // <--- Ubah import ke client-side Supabase client
 
 import {
@@ -21,7 +21,13 @@ import {
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Jika ini halaman login admin, tampilkan hanya children tanpa layout
+  if (pathname === '/admin/login') {
+    return children;
+  }
 
   // Hapus state loading dan user, karena autentikasi sudah ditangani middleware
   // const [loading, setLoading] = useState(true);
@@ -47,7 +53,7 @@ export default function AdminLayout({ children }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/auth/signin'); // Arahkan ke halaman login universal setelah logout
+    router.push('/admin/login'); // Arahkan ke halaman login admin setelah logout
   };
 
   // Hapus kondisi loading, karena diasumsikan middleware sudah meloloskan user

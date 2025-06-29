@@ -3,10 +3,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '../../../lib/supabaseClient'; // <--- SESUAIKAN PATH INI
-import { UserCircle } from 'lucide-react'; // Gunakan UserCircle atau ikon generik lainnya
+import { createClient } from '../../../lib/supabaseClient';
+import { GraduationCap, Users } from 'lucide-react';
 
-export default function UniversalLoginPage() {
+export default function GuruSiswaLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,18 +62,22 @@ export default function UniversalLoginPage() {
       }
 
       switch (userRole) {
-        case 'admin':
-          router.push('/admin');
-          break;
         case 'guru':
           router.push('/guru/dashboard');
           break;
         case 'siswa':
           router.push('/siswa/dashboard');
           break;
+        case 'admin':
+          setErrorMsg('Akses ditolak: Admin harus login melalui halaman admin.');
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
         default:
           setErrorMsg('Role user tidak dikenal. Silakan hubungi admin.');
-          router.push('/');
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
       }
     } catch (dbFetchError) {
       console.error('Error fetching user role from database:', dbFetchError.message);
@@ -84,44 +88,46 @@ export default function UniversalLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] px-4">
-      <div className="bg-gradient-to-br from-[#1a1a1a] via-[#1f1f1f] to-[#111] border border-gray-700 shadow-2xl rounded-2xl px-8 py-10 w-full max-w-md space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-red-50 px-4">
+      <div className="bg-white border border-gray-200 shadow-2xl rounded-3xl px-8 py-10 w-full max-w-md space-y-6">
         <div className="text-center">
-          <div className="flex justify-center items-center gap-2 mb-2">
-            <UserCircle size={32} className="text-orange-400" />
-            <h2 className="text-3xl font-bold text-white">Login Aplikasi</h2>
+          <div className="flex justify-center items-center gap-3 mb-4">
+            <div className="bg-red-600 p-3 rounded-full">
+              <GraduationCap size={32} className="text-white" />
+            </div>
           </div>
-          <p className="text-sm text-gray-400">Masuk ke akun Anda</p>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">SDN PALEBON 03</h2>
+          <p className="text-sm text-gray-600">Portal Guru & Siswa</p>
         </div>
 
         {errorMsg && (
-          <div className="text-sm text-red-500 text-center bg-red-900 bg-opacity-30 border border-red-700 rounded p-2">
+          <div className="text-sm text-red-600 text-center bg-red-50 border border-red-200 rounded-lg p-3">
             {errorMsg}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-4 py-2 rounded-lg bg-[#222] text-white border border-gray-600 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              placeholder="nama@email.com"
+              className="w-full px-4 py-3 rounded-xl bg-gray-50 text-gray-800 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition duration-200"
               required
               disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-300 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-2 rounded-lg bg-[#222] text-white border border-gray-600 focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl bg-gray-50 text-gray-800 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition duration-200"
               required
               disabled={loading}
             />
@@ -129,13 +135,26 @@ export default function UniversalLoginPage() {
 
           <button
             type="submit"
-            className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition duration-200 shadow-md"
+            className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition duration-200 shadow-lg transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={loading}
           >
-            {loading ? 'Memuat...' : 'Masuk'}
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Memuat...
+              </div>
+            ) : (
+              'Masuk'
+            )}
           </button>
         </form>
 
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+            <Users size={16} />
+            <span>Untuk Guru dan Siswa</span>
+          </div>
+        </div>
       </div>
     </div>
   );

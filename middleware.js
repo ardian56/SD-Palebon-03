@@ -57,21 +57,26 @@ export async function middleware(request) { // Hapus ': NextRequest'
                        pathname.startsWith('/admin/lomba') ||
                        pathname.startsWith('/admin/ekstra');   
 
-  if (isAdminRoute) {
+  // Exclude admin login page from admin route protection
+  const isAdminLoginRoute = pathname === '/admin/login';
+
+  if (isAdminRoute && !isAdminLoginRoute) {
     console.log('Middleware: Accessing Admin Route:', pathname);
     if (!user) {
-      console.log('Middleware: User not logged in, redirecting to /auth/signin');
-      return NextResponse.redirect(new URL('/auth/signin', request.url));
+      console.log('Middleware: User not logged in, redirecting to /admin/login');
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
     if (userRole !== 'admin') {
-      console.warn(`Middleware: User ${user.email} (role: ${userRole}) attempted to access admin route. Redirecting to /unauthorized`);
+      console.warn(`Middleware: User ${user.email} (role: ${userRole}) attempted to access admin route. Redirecting to /`);
       return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
   // --- Logika Proteksi Halaman Autentikasi ---
   const isAuthPage = pathname.startsWith('/auth/signin') || pathname.startsWith('/auth/signup');
-  if (isAuthPage && user) {
+  const isAdminLoginPage = pathname === '/admin/login';
+  
+  if ((isAuthPage || isAdminLoginPage) && user) {
     console.log('Middleware: User already logged in, redirecting from auth page.');
     if (userRole === 'admin') return NextResponse.redirect(new URL('/admin', request.url));
     if (userRole === 'guru') return NextResponse.redirect(new URL('/guru/dashboard', request.url));

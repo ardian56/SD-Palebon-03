@@ -343,10 +343,16 @@ export default function SiswaEkstraPage() {
 
           {userData?.extracurricular_finalized && (
             <div className="bg-blue-100 border-l-4 border-blue-500 p-4 mb-4">
-              <p className="text-blue-700">
-                <CheckCircle className="inline w-5 h-5 mr-2" />
-                Pilihan ekstrakurikuler Anda sudah difinalisasi.
-              </p>
+              <div className="text-blue-700">
+                <div className="flex items-center mb-2">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <span className="font-medium">Pilihan ekstrakurikuler Anda sudah difinalisasi.</span>
+                </div>
+                <div className="text-sm">
+                  <p>Silahkan hubungi BK jika mengalami masalah:</p>
+                  <p className="font-medium">📞 0812-3456-7890</p>
+                </div>
+              </div>
             </div>
           )}
         </div>

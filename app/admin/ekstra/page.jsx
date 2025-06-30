@@ -41,7 +41,10 @@ export default function AdminEkstraPage() {
         .select('*')
         .order('name', { ascending: true });
 
-      if (ekstrasError) throw ekstrasError;
+      if (ekstrasError) {
+        console.error('Error fetching extracurriculars:', ekstrasError);
+        throw ekstrasError;
+      }
       console.log('Admin: Extracurriculars data:', ekstrasData);
 
       // Fetch schedules for all extracurriculars
@@ -49,7 +52,13 @@ export default function AdminEkstraPage() {
         .from('extracurricular_schedules')
         .select('*');
 
-      if (schedulesError) throw schedulesError;
+      if (schedulesError) {
+        console.error('Error fetching schedules:', schedulesError);
+        // Don't throw error for schedules, just log it
+        console.log('Admin: Using extracurriculars without schedules');
+        setEkstrakurikulers(ekstrasData.map(ekstra => ({ ...ekstra, schedule: null })));
+        return;
+      }
       console.log('Admin: Schedules data:', schedulesData);
 
       // Merge schedules into extracurriculars data
@@ -66,7 +75,7 @@ export default function AdminEkstraPage() {
       setEkstrakurikulers(ekstrasWithSchedules || []);
     } catch (error) {
       console.error('Error fetching extracurriculars:', error);
-      showAlert('Gagal memuat data ekstrakurikuler', 'error');
+      showAlert('Gagal memuat data ekstrakurikuler: ' + (error.message || 'Unknown error'), 'error');
     } finally {
       setLoading(false);
     }
@@ -92,9 +101,7 @@ export default function AdminEkstraPage() {
         return;
       }
 
-      // Check for schedule conflicts with other extracurriculars (removed - admin can override)
-      // Commented out conflict checking as admin should be able to override schedule conflicts
-      /*
+      // Check for schedule conflicts with other extracurriculars
       const { data: existingSchedules, error: checkError } = await supabase
         .from('extracurricular_schedules')
         .select('*')
@@ -113,7 +120,6 @@ export default function AdminEkstraPage() {
           return;
         }
       }
-      */
     }
 
     try {
@@ -467,8 +473,7 @@ export default function AdminEkstraPage() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-400 mt-2">
-                  Jadwal dapat diisi nanti atau dibiarkan kosong jika belum ditentukan.<br/>
-                  <span className="text-yellow-400">Peringatan:</span> Admin dapat membuat jadwal yang bertabrakan. Pastikan tidak ada konflik waktu yang tidak diinginkan.
+                  Jadwal dapat diisi nanti atau dibiarkan kosong jika belum ditentukan
                 </p>
               </div>
 

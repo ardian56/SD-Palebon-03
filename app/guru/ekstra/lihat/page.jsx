@@ -18,10 +18,177 @@ function LihatEkstrakurikulerSiswaContent() {
   const [userData, setUserData] = useState(null); // Role and class info for the current guru
   const [message, setMessage] = useState('');
   const [studentsExtracurricularData, setStudentsExtracurricularData] = useState([]);
-  const [attendancesToday, setAttendancesToday] = useState([]);
-  const [activeTab, setActiveTab] = useState('status'); // 'status', 'absensi'
+  const [studentsScheduleData, setStudentsScheduleData] = useState([]);
+  const [activeTab, setActiveTab] = useState('status'); // 'status', 'jadwal'
   const [filterClassId, setFilterClassId] = useState(null); // Used by regular guru
-  const [isSuperAdminViewingAll, setIsSuperAdminViewingAll] = useState(false); // Used by super admin (renamed from isGuruBkViewingAll)
+  const [isSuperAdminViewingAll, setIsSuperAdminViewingAll] = useState(false); // Used by super admin
+
+  // Function to fetch schedule data for students
+  const fetchStudentsScheduleData = async (studentsData, classFilter, isViewingAll) => {
+    try {
+      console.log('Guru: Starting fetchStudentsScheduleData...');
+      
+      // Get only finalized students
+      const finalizedStudents = studentsData.filter(student => student.extracurricular_finalized);
+      console.log('Guru: Finalized students:', finalizedStudents.length);
+      
+      if (finalizedStudents.length === 0) {
+        console.log('Guru: No finalized students found');
+        setStudentsScheduleData([]);
+        return;
+      }
+
+      // Get student IDs for finalized students
+      const finalizedStudentIds = finalizedStudents.map(student => student.id);
+      console.log('Guru: Finalized student IDs:', finalizedStudentIds);
+
+      // Step 1: Get student-extracurricular relationships (correct field name)
+      console.log('Guru: Querying student_extracurriculars table...');
+      const { data: studentExtras, error: studentExtrasError } = await supabase
+        .from('student_extracurriculars')
+        .select('user_id, extracurricular_id')
+        .in('user_id', finalizedStudentIds);
+
+      if (studentExtrasError) {
+        console.error('Error fetching student extracurriculars:', studentExtrasError);
+        console.error('Error details:', JSON.stringify(studentExtrasError, null, 2));
+        return;
+      }
+
+      console.log('Guru: Student extracurriculars data:', studentExtras);
+
+      if (!studentExtras || studentExtras.length === 0) {
+        console.log('Guru: No student extracurriculars found');
+        setStudentsScheduleData([]);
+        return;
+      }
+
+      // Normalize data structure (rename user_id to student_id for consistency)
+      const normalizedStudentExtras = studentExtras.map(item => ({
+        student_id: item.user_id,
+        extracurricular_id: item.extracurricular_id
+      }));
+
+      // Continue with normal processing
+      await processScheduleData(normalizedStudentExtras, finalizedStudentIds);
+      
+    } catch (error) {
+      console.error('Error in fetchStudentsScheduleData:', error);
+    }
+  };
+
+  // Separate function to process schedule data
+  const processScheduleData = async (studentExtras, finalizedStudentIds) => {
+    try {
+
+      // Step 2: Get student names and classes separately
+      const { data: students, error: studentsError } = await supabase
+        .from('users')
+        .select('id, name, classes(name)')
+        .in('id', finalizedStudentIds);
+
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+        return;
+      }
+
+      console.log('Guru: Students data:', students);
+
+      // Step 3: Get unique extracurricular IDs and their names
+      const extraIds = [...new Set(studentExtras.map(se => se.extracurricular_id))];
+      console.log('Guru: Unique extracurricular IDs:', extraIds);
+
+      const { data: extracurriculars, error: extrasError } = await supabase
+        .from('extracurriculars')
+        .select('id, name')
+        .in('id', extraIds);
+
+      if (extrasError) {
+        console.error('Error fetching extracurriculars:', extrasError);
+        return;
+      }
+
+      console.log('Guru: Extracurriculars data:', extracurriculars);
+
+      // Step 4: Get schedules for these extracurriculars
+      const { data: schedules, error: schedulesError } = await supabase
+        .from('extracurricular_schedules')
+        .select('extracurricular_id, day_of_week, start_time, end_time')
+        .in('extracurricular_id', extraIds);
+
+      if (schedulesError) {
+        console.error('Error fetching schedules:', schedulesError);
+        return;
+      }
+
+      console.log('Guru: Schedules data:', schedules);
+
+      // Step 5: Process and combine data
+      const processedScheduleData = {};
+      
+      // Create student lookup maps
+      const studentMap = new Map(students.map(s => [s.id, s]));
+      const extraMap = new Map(extracurriculars.map(e => [e.id, e]));
+      
+      studentExtras.forEach(item => {
+        const studentId = item.student_id;
+        const extraId = item.extracurricular_id;
+        
+        const student = studentMap.get(studentId);
+        const extra = extraMap.get(extraId);
+        
+        if (!student || !extra) return;
+
+        const studentName = student.name;
+        const className = student.classes?.name;
+        const extraName = extra.name;
+
+        if (!processedScheduleData[studentId]) {
+          processedScheduleData[studentId] = {
+            id: studentId,
+            name: studentName,
+            className: className || 'Tidak ada kelas',
+            schedules: []
+          };
+        }
+
+        // Find schedules for this extracurricular
+        const extraSchedules = schedules ? schedules.filter(s => s.extracurricular_id === extraId) : [];
+        
+        extraSchedules.forEach(schedule => {
+          const dayOfWeek = schedule.day_of_week;
+          const startTime = schedule.start_time;
+          const endTime = schedule.end_time;
+
+          if (extraName && dayOfWeek !== null && startTime && endTime) {
+            const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+            processedScheduleData[studentId].schedules.push({
+              extraName,
+              day: dayNames[dayOfWeek] || 'Tidak diketahui',
+              startTime,
+              endTime
+            });
+          }
+        });
+      });
+
+      console.log('Guru: Processed schedule data:', processedScheduleData);
+
+      // Convert to array and sort schedules
+      const scheduleArray = Object.values(processedScheduleData).map(student => ({
+        ...student,
+        schedules: student.schedules.sort((a, b) => {
+          const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+          return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+        })
+      }));
+
+      console.log('Guru: Final schedule array:', scheduleArray);
+      setStudentsScheduleData(scheduleArray);
+    } catch (error) {
+      console.error('Error in processScheduleData:', error);
+    }
+  };
 
 
   useEffect(() => {
@@ -198,38 +365,9 @@ function LihatEkstrakurikulerSiswaContent() {
 
       setStudentsExtracurricularData(processedStudents);
 
-      // Fetch today's attendances
-      const today = new Date().toISOString().split('T')[0];
-      let attendanceQuery = supabase
-        .from('extracurricular_attendances')
-        .select(`
-          id,
-          attendance_date,
-          status,
-          notes,
-          check_in_time,
-          student_extracurriculars!inner(
-            id,
-            users!inner(id, name, class_id, classes(name)),
-            extracurriculars!inner(id, name)
-          )
-        `)
-        .eq('attendance_date', today);
-
-      // Filter by class if not super admin viewing all
-      if (!viewingAll && currentClassFilter) {
-        attendanceQuery = attendanceQuery.eq('student_extracurriculars.users.class_id', currentClassFilter);
-      }
-
-      const { data: todayAttendances, error: attendanceError } = await attendanceQuery;
-
-      if (attendanceError) {
-        console.error('Error fetching today\'s attendances:', attendanceError);
-        setMessage('Error fetching attendance data: ' + attendanceError.message);
-      } else {
-        setAttendancesToday(todayAttendances || []);
-      }
-
+      // Fetch schedule data for finalized students
+      await fetchStudentsScheduleData(studentsToFetch, currentClassFilter, viewingAll);
+      
       setLoading(false);
     };
 
@@ -275,27 +413,37 @@ function LihatEkstrakurikulerSiswaContent() {
       </p>
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          onClick={() => setActiveTab('status')}
-          className={`px-4 py-2 text-sm font-medium ${activeTab === 'status' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          Status Ekstrakurikuler
-        </button>
-        <button
-          onClick={() => setActiveTab('absensi')}
-          className={`px-4 py-2 text-sm font-medium ${activeTab === 'absensi' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          Absensi Hari Ini
-        </button>
+      <div className="mb-6">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('status')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'status'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Status Ekstrakurikuler
+          </button>
+          <button
+            onClick={() => setActiveTab('jadwal')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'jadwal'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Jadwal Siswa
+          </button>
+        </nav>
       </div>
 
-      {/* Tab Content: Status Ekstrakurikuler */}
-      {activeTab === 'status' && (
+      {studentsExtracurricularData.length === 0 ? (
+        <p className="text-gray-500">Tidak ada data siswa ditemukan.</p>
+      ) : (
         <>
-          {studentsExtracurricularData.length === 0 ? (
-            <p className="text-gray-500">Tidak ada data siswa ditemukan.</p>
-          ) : (
+          {/* Tab Content */}
+          {activeTab === 'status' && (
             <div className="overflow-x-auto bg-white rounded-lg shadow-md p-4">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -342,83 +490,60 @@ function LihatEkstrakurikulerSiswaContent() {
               </table>
             </div>
           )}
-        </>
-      )}
 
-      {/* Tab Content: Absensi Hari Ini */}
-      {activeTab === 'absensi' && (
-        <>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Absensi Ekstrakurikuler Hari Ini</h2>
-          <p className="text-gray-600 mb-4">
-            Tanggal: {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-          {attendancesToday.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-6 text-center">
-              <p className="text-gray-500">Belum ada siswa yang melakukan absensi ekstrakurikuler hari ini.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto bg-white rounded-lg shadow-md p-4">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama Siswa
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kelas
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ekstrakurikuler
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Waktu Absen
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Keterangan
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {attendancesToday.map((attendance) => (
-                    <tr key={attendance.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {attendance.student_extracurriculars.users.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {attendance.student_extracurriculars.users.classes?.name || 'Tidak ada kelas'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {attendance.student_extracurriculars.extracurriculars.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {attendance.check_in_time ? 
-                          new Date(attendance.check_in_time).toLocaleTimeString('id-ID', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          }) : 
-                          '-'
-                        }
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          attendance.status === 'hadir' ? 'bg-green-100 text-green-800' :
-                          attendance.status === 'izin' ? 'bg-yellow-100 text-yellow-800' :
-                          attendance.status === 'sakit' ? 'bg-blue-100 text-blue-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {attendance.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {attendance.notes || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {activeTab === 'jadwal' && (
+            <div className="bg-white rounded-lg shadow-md p-4">
+              {studentsScheduleData.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">
+                  Tidak ada siswa yang sudah finalisasi pilihan ekstrakurikuler.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Nama Siswa
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Kelas
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Jadwal Ekstrakurikuler
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {studentsScheduleData.map((student) => (
+                        <tr key={student.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {student.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {student.className}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700">
+                            {student.schedules.length > 0 ? (
+                              <div className="space-y-2">
+                                {student.schedules.map((schedule, index) => (
+                                  <div key={index} className="bg-blue-50 p-2 rounded border-l-4 border-blue-400">
+                                    <div className="font-semibold text-blue-800">{schedule.extraName}</div>
+                                    <div className="text-sm text-blue-600">
+                                      {schedule.day}, {schedule.startTime} - {schedule.endTime}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">Tidak ada jadwal</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </>

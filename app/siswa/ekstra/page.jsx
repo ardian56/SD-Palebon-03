@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabaseClient';
-import Link from 'next/link';
 import { Calendar, Clock, Users, CheckCircle, XCircle, MapPin, AlertTriangle } from 'lucide-react';
 
 export default function SiswaEkstraPage() {
@@ -17,7 +16,6 @@ export default function SiswaEkstraPage() {
   const [availableExtras, setAvailableExtras] = useState([]);
   const [selectedExtras, setSelectedExtras] = useState([]);
   const [schedules, setSchedules] = useState([]);
-  const [attendances, setAttendances] = useState([]);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('pilih'); // 'pilih', 'jadwal'
 
@@ -59,9 +57,6 @@ export default function SiswaEkstraPage() {
     
     // Ambil jadwal ekstrakurikuler
     await fetchSchedules(session.user.id);
-    
-    // Ambil data absensi
-    await fetchAttendances(session.user.id);
 
     setLoading(false);
   };
@@ -185,88 +180,6 @@ export default function SiswaEkstraPage() {
     }
   };
 
-  const fetchAttendances = async (userId) => {
-    try {
-      console.log('Siswa: Fetching attendances for user:', userId);
-      
-      // Get student_extracurricular records for this user
-      const { data: studentExtrasData, error: studentExtrasError } = await supabase
-        .from('student_extracurriculars')
-        .select('id, extracurricular_id')
-        .eq('user_id', userId);
-
-      if (studentExtrasError) {
-        console.error('Error fetching student extracurriculars:', studentExtrasError);
-        return;
-      }
-
-      if (!studentExtrasData || studentExtrasData.length === 0) {
-        console.log('Siswa: No student extracurriculars found');
-        setAttendances([]);
-        return;
-      }
-
-      const studentExtraIds = studentExtrasData.map(se => se.id);
-
-      // Get attendances for these student_extracurriculars
-      const { data: attendancesData, error: attendancesError } = await supabase
-        .from('extracurricular_attendances')
-        .select('id, attendance_date, status, notes, check_in_time, student_extracurricular_id')
-        .in('student_extracurricular_id', studentExtraIds)
-        .order('attendance_date', { ascending: false });
-
-      if (attendancesError) {
-        console.error('Error fetching attendances:', attendancesError);
-        return;
-      }
-
-      // Get extracurricular data
-      const extraIds = studentExtrasData.map(se => se.extracurricular_id);
-      const { data: ekstrasData, error: ekstrasError } = await supabase
-        .from('extracurriculars')
-        .select('id, name')
-        .in('id', extraIds);
-
-      if (ekstrasError) {
-        console.error('Error fetching extracurriculars for attendance:', ekstrasError);
-        return;
-      }
-
-      // Get schedule data
-      const { data: schedulesData, error: schedulesError } = await supabase
-        .from('extracurricular_schedules')
-        .select('id, extracurricular_id, day_of_week, start_time, end_time')
-        .in('extracurricular_id', extraIds);
-
-      if (schedulesError) {
-        console.error('Error fetching schedules for attendance:', schedulesError);
-      }
-
-      // Merge all data
-      const mergedAttendances = attendancesData.map(attendance => {
-        const studentExtra = studentExtrasData.find(se => se.id === attendance.student_extracurricular_id);
-        const extracurricular = ekstrasData.find(e => e.id === studentExtra?.extracurricular_id);
-        const schedules = schedulesData ? schedulesData.filter(s => s.extracurricular_id === studentExtra?.extracurricular_id) : [];
-        
-        return {
-          ...attendance,
-          student_extracurriculars: {
-            id: studentExtra?.id,
-            extracurriculars: {
-              ...extracurricular,
-              extracurricular_schedules: schedules
-            }
-          }
-        };
-      });
-      
-      console.log('Siswa: Final merged attendances:', mergedAttendances);
-      setAttendances(mergedAttendances || []);
-    } catch (err) {
-      console.error('Unexpected error fetching attendances:', err);
-    }
-  };
-
   // Fungsi untuk mengecek konflik jadwal
   const hasScheduleConflict = (newSchedules) => {
     // Jika tidak ada jadwal baru, tidak ada konflik
@@ -360,67 +273,6 @@ export default function SiswaEkstraPage() {
     await fetchSchedules(user.id);
   };
 
-  const handleAttendance = async (scheduleId, status) => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Ambil schedule untuk mendapatkan extracurricular_id
-    const currentSchedule = schedules.find(s => s.id === scheduleId);
-    if (!currentSchedule) {
-      setMessage('Jadwal tidak ditemukan');
-      return;
-    }
-
-    // Cek apakah sudah absen hari ini untuk ekstrakurikuler yang sama
-    const existingAttendance = attendances.find(
-      a => a.student_extracurriculars.extracurriculars.id === currentSchedule.extracurricular_id && 
-           a.attendance_date === today
-    );
-
-    if (existingAttendance) {
-      setMessage('Anda sudah melakukan absensi untuk jadwal ini hari ini.');
-      return;
-    }
-
-    // Cari student_extracurricular record berdasarkan extracurricular_id
-    const studentExtra = selectedExtras.find(se => se.extracurricular_id === currentSchedule.extracurricular_id);
-    if (!studentExtra || !studentExtra.id) {
-      setMessage('Data relasi siswa-ekstrakurikuler tidak ditemukan');
-      return;
-    }
-
-    // Gunakan student_extracurricular_id sesuai ERD
-    const insertData = {
-      student_extracurricular_id: studentExtra.id, // ID dari tabel student_extracurriculars
-      attendance_date: today,
-      status: status
-    };
-
-    // Coba dengan check_in_time, jika gagal coba tanpa check_in_time
-    let { error } = await supabase
-      .from('extracurricular_attendances')
-      .insert({
-        ...insertData,
-        check_in_time: new Date().toISOString()
-      });
-
-    // Jika gagal karena check_in_time, coba tanpa kolom tersebut
-    if (error && error.message.includes('check_in_time')) {
-      const { error: retryError } = await supabase
-        .from('extracurricular_attendances')
-        .insert(insertData);
-      error = retryError;
-    }
-
-    if (error) {
-      console.error('Attendance error:', error);
-      setMessage('Gagal melakukan absensi: ' + error.message);
-      return;
-    }
-
-    setMessage(`Absensi ${status} berhasil dicatat!`);
-    await fetchAttendances(user.id);
-  };
-
   const handleFinalizeSelection = async () => {
     if (selectedExtras.length === 0) {
       setMessage('Pilih minimal 1 ekstrakurikuler sebelum finalisasi.');
@@ -465,16 +317,10 @@ export default function SiswaEkstraPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
-      <Link href="/siswa/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Kembali ke Dashboard
-            </Link>
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Ekstrakurikuler</h1>
           <p className="text-gray-700 mb-4">
-            Kelola pilihan ekstrakurikuler, lihat jadwal, dan lakukan absensi
+            Kelola pilihan ekstrakurikuler dan lihat jadwal
           </p>
           
           {message && (
@@ -503,18 +349,25 @@ export default function SiswaEkstraPage() {
               { id: 'jadwal', label: 'Jadwal Saya', icon: Calendar }
             ].map(tab => {
               const Icon = tab.icon;
+              const isDisabled = tab.id === 'jadwal' && !userData?.extracurricular_finalized;
+              
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => !isDisabled && setActiveTab(tab.id)}
+                  disabled={isDisabled}
                   className={`flex items-center px-6 py-3 font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-gray-900'
+                      : isDisabled 
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-700 hover:text-gray-900'
                   }`}
+                  title={isDisabled ? 'Finalisasi pilihan ekstrakurikuler terlebih dahulu untuk melihat jadwal' : ''}
                 >
                   <Icon className="w-5 h-5 mr-2" />
                   {tab.label}
+                  {isDisabled && <span className="ml-1 text-xs">(🔒)</span>}
                 </button>
               );
             })}
@@ -562,7 +415,7 @@ export default function SiswaEkstraPage() {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Ekstrakurikuler Tersedia</h2>
                 <div className="mb-4 text-sm text-gray-600">
-                  Total ekstrakurikuler tersedia: {availableExtras.length}
+                  Debug: Total ekstrakurikuler tersedia: {availableExtras.length}
                 </div>
                 {availableExtras.length > 0 ? (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -605,10 +458,10 @@ export default function SiswaEkstraPage() {
                             )}
                           </div>
 
-                          {hasConflict && !selected && (
-                            <div className="flex items-center text-red-600 text-xs mb-3 bg-red-50 p-2 rounded">
-                              <AlertTriangle className="w-4 h-4 mr-1 flex-shrink-0" />
-                              <span>Jadwal bertabrakan dengan pilihan lain</span>
+                          {hasConflict && (
+                            <div className="flex items-center text-red-600 text-xs mb-2">
+                              <AlertTriangle className="w-4 h-4 mr-1" />
+                              Jadwal bertabrakan
                             </div>
                           )}
 
@@ -657,93 +510,77 @@ export default function SiswaEkstraPage() {
           {/* Tab: Jadwal */}
           {activeTab === 'jadwal' && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Jadwal Ekstrakurikuler Saya</h2>
-              {schedules.length > 0 ? (
-                <div className="grid gap-4">
-                  {schedules.map(schedule => {
-                    const today = new Date();
-                    const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1; // Convert Sunday = 0 to 6, Monday = 1 to 0, etc.
-                    const isToday = dayOfWeek === parseInt(schedule.day_of_week);
-                    
-                    // Check if already attended today
-                    const todayString = today.toISOString().split('T')[0];
-                    const hasAttendedToday = attendances.find(
-                      a => a.student_extracurriculars.extracurriculars.id === schedule.extracurricular_id && 
-                           a.attendance_date === todayString
-                    );
-
-                    return (
-                      <div key={schedule.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg text-gray-900">{schedule.extracurriculars.name}</h3>
-                            <div className="flex items-center text-gray-700 mt-1">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              <span className={isToday ? 'font-bold text-green-600' : ''}>{days[schedule.day_of_week]}</span>
-                              <Clock className="w-4 h-4 ml-4 mr-2" />
-                              <span>{schedule.start_time} - {schedule.end_time}</span>
-                              {schedule.location && (
-                                <>
-                                  <MapPin className="w-4 h-4 ml-4 mr-2" />
-                                  <span>{schedule.location}</span>
-                                </>
-                              )}
-                            </div>
-                            {isToday && (
-                              <div className="mt-2">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Hari ini
-                                </span>
-                              </div>
-                            )}
-                            {hasAttendedToday && (
-                              <div className="mt-2">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  hasAttendedToday.status === 'hadir' ? 'bg-green-100 text-green-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
-                                  Sudah absen: {hasAttendedToday.status}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          {userData?.extracurricular_finalized && (
-                            <div className="flex gap-2">
-                              {isToday && !hasAttendedToday ? (
-                                <button
-                                  onClick={() => handleAttendance(schedule.id, 'hadir')}
-                                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-medium"
-                                >
-                                  Hadir
-                                </button>
-                              ) : (
-                                <div className="text-gray-500 text-sm">
-                                  {hasAttendedToday ? 'Sudah absen hari ini' : 
-                                   isToday ? 'Belum absen hari ini' : 
-                                   'Jadwal rutin'}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {!userData?.extracurricular_finalized && (
-                            <div className="flex gap-2">
-                              <div className="text-orange-500 text-sm bg-orange-50 px-3 py-2 rounded">
-                                Finalisasi pilihan ekstrakurikuler untuk dapat melakukan absensi
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+              {!userData?.extracurricular_finalized ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">
+                    <Calendar className="w-16 h-16 mx-auto mb-4" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Jadwal Belum Tersedia</h3>
+                  <p className="text-gray-600 mb-4">
+                    Finalisasi pilihan ekstrakurikuler terlebih dahulu untuk melihat jadwal Anda.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('pilih')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                  >
+                    Pilih Ekstrakurikuler
+                  </button>
                 </div>
               ) : (
-                <p className="text-gray-700">Belum ada jadwal ekstrakurikuler. Pilih ekstrakurikuler terlebih dahulu di tab "Pilih Ekstrakurikuler".</p>
+                <>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Jadwal Ekstrakurikuler Saya</h2>
+                  {schedules.length > 0 ? (
+                    <div className="grid gap-4">
+                      {schedules.map(schedule => {
+                        const today = new Date();
+                        const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
+                        const isToday = dayOfWeek === parseInt(schedule.day_of_week);
+
+                        return (
+                          <div key={schedule.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-semibold text-lg text-gray-900">{schedule.extracurriculars.name}</h3>
+                                <div className="flex items-center text-gray-700 mt-1">
+                                  <Calendar className="w-4 h-4 mr-2" />
+                                  <span className={isToday ? 'font-bold text-green-600' : ''}>{days[schedule.day_of_week]}</span>
+                                  <Clock className="w-4 h-4 ml-4 mr-2" />
+                                  <span>{schedule.start_time} - {schedule.end_time}</span>
+                                  {schedule.location && (
+                                    <>
+                                      <MapPin className="w-4 h-4 ml-4 mr-2" />
+                                      <span>{schedule.location}</span>
+                                    </>
+                                  )}
+                                </div>
+                                {isToday && (
+                                  <div className="mt-2">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      Hari ini
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 mb-4">
+                        <Calendar className="w-16 h-16 mx-auto mb-4" />
+                      </div>
+                      <p className="text-gray-700">Belum ada jadwal ekstrakurikuler.</p>
+                      <p className="text-gray-500 text-sm mt-2">
+                        Jadwal akan muncul setelah admin mengatur jadwal untuk ekstrakurikuler yang Anda pilih.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
-
-
         </div>
       </div>
     </div>

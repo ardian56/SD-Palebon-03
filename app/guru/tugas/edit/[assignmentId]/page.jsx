@@ -24,7 +24,7 @@ function EditTugasContent() {
   const [description, setDescription] = useState('');
   const [subject, setSubject] = useState('');
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(''); // Ini masih string dari input datetime-local
   const [existingFiles, setExistingFiles] = useState([]); // File yang sudah ada
   const [newFiles, setNewFiles] = useState([]); // File baru yang diunggah
   const [classList, setClassList] = useState([]); // Daftar kelas yang tersedia
@@ -60,6 +60,7 @@ function EditTugasContent() {
       let classesData;
       if (profile.role === 'guru' && profile.classes?.id) {
         classesData = [profile.classes]; // Guru hanya bisa mengedit tugas di kelasnya
+        setSelectedClassId(profile.classes.id); // Set selectedClassId jika guru
       } else if (profile.role === 'super_admin') {
         const { data: allClasses, error: allClassesError } = await supabase
           .from('classes')
@@ -107,7 +108,20 @@ function EditTugasContent() {
         setDescription(fetchedAssignment.description);
         setSubject(fetchedAssignment.subject);
         setSelectedClassId(fetchedAssignment.class_id);
-        setDueDate(fetchedAssignment.due_date.substring(0, 16)); // Format untuk datetime-local input
+
+        // --- PERBAIKAN DI SINI: Format tanggal untuk input datetime-local agar sesuai zona waktu lokal ---
+        const dbDueDate = fetchedAssignment.due_date ? new Date(fetchedAssignment.due_date) : null;
+        const formattedDueDate = dbDueDate ? dbDueDate.toLocaleString('sv-SE', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false // Pastikan format 24 jam
+        }).replace(' ', 'T') : ''; // Ganti spasi dengan 'T'
+        setDueDate(formattedDueDate);
+        // --- AKHIR PERBAIKAN ---
+
         setExistingFiles(fetchedAssignment.assignment_files || []);
       }
 
@@ -124,14 +138,23 @@ function EditTugasContent() {
         { event: '*', schema: 'public', table: 'assignments', filter: `id=eq.${assignmentId}` },
         payload => {
           console.log('Assignment change received!', payload);
-          // Hanya refresh jika ada perubahan signifikan
           if (payload.new) {
             setAssignment(payload.new);
             setTitle(payload.new.title);
             setDescription(payload.new.description);
             setSubject(payload.new.subject);
             setSelectedClassId(payload.new.class_id);
-            setDueDate(payload.new.due_date.substring(0, 16));
+            // Update due date in real-time listeners as well
+            const dbDueDate = payload.new.due_date ? new Date(payload.new.due_date) : null;
+            const formattedDueDate = dbDueDate ? dbDueDate.toLocaleString('sv-SE', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }).replace(' ', 'T') : '';
+            setDueDate(formattedDueDate);
           }
         }
       )
@@ -140,7 +163,7 @@ function EditTugasContent() {
         { event: '*', schema: 'public', table: 'assignment_files', filter: `assignment_id=eq.${assignmentId}` },
         payload => {
             console.log('Assignment files change received!', payload);
-            fetchData(); // Refresh all data to get updated files list
+            fetchData();
         }
       )
       .subscribe();
@@ -160,7 +183,6 @@ function EditTugasContent() {
       setLoading(true);
       setMessage('');
       try {
-        // Hapus dari Supabase Storage
         const fileToDelete = existingFiles.find(f => f.id === fileId);
         if (fileToDelete && fileToDelete.file_url) {
             const filePath = fileToDelete.file_url.split('/storage/v1/object/public/attach/')[1];
@@ -170,12 +192,10 @@ function EditTugasContent() {
                     .remove([filePath]);
                 if (storageError) {
                     console.error('Error deleting file from storage:', storageError);
-                    setMessage('Gagal menghapus file dari storage.');
                 }
             }
         }
 
-        // Hapus dari tabel assignment_files
         const { error } = await supabase
           .from('assignment_files')
           .delete()
@@ -185,7 +205,7 @@ function EditTugasContent() {
           throw error;
         }
         setMessage('File berhasil dihapus!');
-        setExistingFiles(prev => prev.filter(f => f.id !== fileId)); // Update UI
+        setExistingFiles(prev => prev.filter(f => f.id !== fileId));
       } catch (error) {
         console.error('Error deleting file:', error.message);
         setMessage('Gagal menghapus file: ' + error.message);
@@ -213,7 +233,6 @@ function EditTugasContent() {
     }
 
     try {
-      // 1. Update assignment in 'assignments' table
       const { error: assignmentUpdateError } = await supabase
         .from('assignments')
         .update({
@@ -221,16 +240,15 @@ function EditTugasContent() {
           description,
           subject,
           class_id: selectedClassId,
-          due_date: dueDate,
+          due_date: new Date(dueDate), // Fix: Convert string to Date object for saving
         })
         .eq('id', assignment.id)
-        .eq('created_by', user.id); // Pastikan hanya pembuat tugas yang bisa update
+        .eq('created_by', user.id);
 
       if (assignmentUpdateError) {
         throw assignmentUpdateError;
       }
 
-      // 2. Upload new files to Supabase Storage and record in 'assignment_files'
       const uploadedFileDetails = [];
       for (const file of newFiles) {
         const fileExtension = file.name.split('.').pop();
@@ -279,8 +297,7 @@ function EditTugasContent() {
       }
 
       setMessage('Tugas berhasil diperbarui!');
-      setNewFiles([]); // Clear new files input
-      // Re-fetch assignment data to update existingFiles list after new uploads
+      setNewFiles([]);
       const { data: updatedAssignment, error: fetchError } = await supabase
           .from('assignments')
           .select('*, assignment_files(file_url, file_name, file_type)')
@@ -313,7 +330,7 @@ function EditTugasContent() {
         <p className="mb-4 p-3 rounded bg-red-100 text-red-700">
           {message}
         </p>
-        <Link href="/guru/materi-dan-tugas" className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4">
+        <Link href={`/guru/materi-dan-tugas?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4">
             &larr; Kembali ke Materi & Tugas Kelas
         </Link>
       </div>
@@ -321,13 +338,13 @@ function EditTugasContent() {
   }
 
   if (!assignment) {
-      return null; // Ditangani oleh pesan error di atas
+      return null;
   }
 
   return (
     <div className="w-full bg-gray-100">
       <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <Link href="/guru/materi-dan-tugas" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+      <Link href={`/guru/materi-dan-tugas?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
@@ -395,11 +412,11 @@ function EditTugasContent() {
             onChange={(e) => setSelectedClassId(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
-            disabled={userData?.role === 'guru' && userData?.classes?.id && selectedClassId === userData?.classes?.id} // Disable jika guru dan kelasnya sama
+            disabled={userData?.role === 'guru' && userData?.classes?.id && selectedClassId === userData?.classes?.id}
           >
             <option value="">Pilih Kelas</option>
-            {classList.map((cls) => (
-              <option key={cls.id} value={cls.id}>
+            {classList.map((cls, index) => (
+              <option key={cls.id || `class-${index}`} value={cls.id}>
                 {cls.name}
               </option>
             ))}
@@ -425,8 +442,8 @@ function EditTugasContent() {
           <div className="border border-gray-200 rounded-md p-4">
             <h3 className="text-md font-semibold text-gray-700 mb-2">File Lampiran yang Sudah Ada:</h3>
             <ul className="space-y-2">
-              {existingFiles.map((file) => (
-                <li key={file.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+              {existingFiles.map((file, index) => (
+                <li key={file.id || `file-${index}`} className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
                   <a href={file.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
                     {file.file_name} ({file.file_type})
                   </a>
@@ -452,7 +469,7 @@ function EditTugasContent() {
           <input
             type="file"
             id="file-upload"
-            onChange={handleNewFileChange}
+            onChange={(e) => setNewFiles([...e.target.files])} // Tambahkan handleNewFileChange
             className="mt-1 block w-full text-sm text-gray-500
                        file:mr-4 file:py-2 file:px-4
                        file:rounded-full file:border-0
@@ -481,7 +498,7 @@ function EditTugasContent() {
   );
 }
 
-export default function EditTugasPage() {
+export default function EditTugasPageWrapper() {
   return (
     <Suspense fallback={
         <div className="flex items-center justify-center min-h-screen bg-gray-100">

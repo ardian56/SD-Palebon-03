@@ -22,7 +22,7 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
   const [description, setDescription] = useState('');
   const [subject, setSubject] = useState('');
   const [selectedClassId, setSelectedClassId] = useState(initialClassId); // Set initial classId
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(''); // Ini adalah string dari input datetime-local
   const [files, setFiles] = useState([]);
   const [classList, setClassList] = useState([]); // List of classes the guru teaches
 
@@ -118,7 +118,7 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
           description,
           subject,
           class_id: selectedClassId,
-          due_date: dueDate,
+          due_date: new Date(dueDate), // <-- PERUBAHAN UTAMA DI SINI
           created_by: user.id,
         })
         .select()

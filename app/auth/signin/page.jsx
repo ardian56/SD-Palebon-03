@@ -69,7 +69,7 @@ export default function GuruSiswaLoginPage() {
           router.push('/siswa/dashboard');
           break;
         case 'admin':
-          setErrorMsg('Akses ditolak: Admin harus login melalui halaman admin.');
+          setErrorMsg('Akses ditolak');
           await supabase.auth.signOut();
           setLoading(false);
           return;

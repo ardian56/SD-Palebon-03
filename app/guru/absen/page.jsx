@@ -59,16 +59,32 @@ export default function GuruAbsenPage() {
 
   const handleDelete = async (formId) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus form absensi ini? Semua data absensi siswa yang terkait akan ikut terhapus.")) {
-      const { error } = await supabase
-        .from('attendance_forms')
-        .delete()
-        .eq('id', formId);
+      try {
+        // First, delete all attendance records associated with this form
+        const { error: recordsError } = await supabase
+          .from('attendance_records')
+          .delete()
+          .eq('form_id', formId);
 
-      if (error) {
-        setError("Gagal menghapus form: " + error.message);
-      } else {
-        setMessage("Form berhasil dihapus.");
-        setAttendanceForms(attendanceForms.filter(form => form.id !== formId));
+        if (recordsError) {
+          setError("Gagal menghapus data absensi: " + recordsError.message);
+          return;
+        }
+
+        // Then, delete the attendance form
+        const { error: formError } = await supabase
+          .from('attendance_forms')
+          .delete()
+          .eq('id', formId);
+
+        if (formError) {
+          setError("Gagal menghapus form: " + formError.message);
+        } else {
+          setMessage("Form dan semua data absensi terkait berhasil dihapus.");
+          setAttendanceForms(attendanceForms.filter(form => form.id !== formId));
+        }
+      } catch (err) {
+        setError("Terjadi kesalahan saat menghapus: " + err.message);
       }
     }
   };

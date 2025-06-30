@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabaseClient'; // Adjusted path
 
 export default function SiswaAbsenPage() {
   const router = useRouter();
@@ -60,7 +60,7 @@ export default function SiswaAbsenPage() {
 
     const { data: records, error: recordsError } = await supabase
         .from('attendance_records')
-        .select('form_id, status')
+        .select('form_id, status, submitted_at') // Fetch submitted_at
         .eq('student_id', session.user.id);
 
     if (recordsError) {
@@ -69,7 +69,7 @@ export default function SiswaAbsenPage() {
         return;
     }
 
-    const recordsMap = new Map(records.map(r => [r.form_id, r.status]));
+    const recordsMap = new Map(records.map(r => [r.form_id, { status: r.status, submitted_at: r.submitted_at }]));
     
     const now = new Date();
     const processedForms = forms.map(form => {
@@ -80,11 +80,25 @@ export default function SiswaAbsenPage() {
       const startTime = new Date(year, month - 1, day, startHour, startMinute);
       const endTime = new Date(year, month - 1, day, endHour, endMinute);
       
+      const record = recordsMap.get(form.id);
+      let studentStatus = record ? record.status : null;
+      let isLate = false;
+
+      if (record && record.submitted_at) {
+        const submittedAt = new Date(record.submitted_at);
+        const lateThreshold = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour grace
+        if (studentStatus === 'Hadir' && submittedAt > lateThreshold) {
+          isLate = true;
+        }
+      }
+
+
       return {
         ...form,
-        status: recordsMap.get(form.id) || null,
+        status: studentStatus, // Current status (Hadir, Tidak Hadir, null)
         is_active: now >= startTime && now <= endTime,
-        is_over: now > endTime
+        is_over: now > endTime,
+        is_late_submission: isLate, // New flag for late submission
       };
     });
 
@@ -115,7 +129,7 @@ export default function SiswaAbsenPage() {
         setMessage('Gagal mengirim absensi: ' + error.message);
       }
     } else {
-      await fetchAttendanceData();
+      await fetchAttendanceData(); // Re-fetch to update status immediately
     }
     setSubmitting(null);
   };
@@ -124,7 +138,6 @@ export default function SiswaAbsenPage() {
     return <div className="p-8 text-center bg-gray-50 min-h-screen">Memuat daftar absensi...</div>;
   }
 
-  // *** PERUBAHAN UTAMA DI SINI: Latar belakang dan warna teks ***
   return (
     <div className="bg-gray-50 min-h-screen">
         <div className="container mx-auto p-4 md:p-8 max-w-4xl">
@@ -141,14 +154,16 @@ export default function SiswaAbsenPage() {
                     <div className="flex justify-between items-start mb-3">
                         <h2 className="text-xl font-bold text-gray-900">{form.title}</h2>
                         { (form.is_active && !form.status) && <span className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">Tersedia</span> }
-                        { form.status === 'Hadir' && <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">Anda Hadir</span> }
-                        { form.status === 'Tidak Hadir' && <span className="px-3 py-1 text-sm font-semibold rounded-full bg-orange-100 text-orange-800">Anda Tidak Hadir</span> }
+                        { form.status === 'Hadir' && !form.is_late_submission && <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">Anda Hadir</span> }
+                        { form.status === 'Hadir' && form.is_late_submission && <span className="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800">Anda Terlambat</span> } {/* New status for late */}
+                      
                         { (form.is_over && !form.status) && <span className="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">Terlewat</span> }
                     </div>
                 <p className="text-gray-600 mt-1">{form.description || 'Tidak ada deskripsi.'}</p>
                 <div className="flex items-center gap-4 text-sm text-gray-500 my-3">
                     <span>🗓️ {new Date(form.date).toLocaleDateString('id-ID', { dateStyle: 'full' })}</span>
                     <span>⏰ {form.start_time.substring(0, 5)} - {form.end_time.substring(0, 5)}</span>
+                    
                 </div>
                 
                 { form.is_active && !form.status && (
@@ -160,13 +175,7 @@ export default function SiswaAbsenPage() {
                     >
                         {submitting === form.id ? 'Loading...' : 'Hadir'}
                     </button>
-                    <button 
-                        onClick={() => handleAttend(form.id, 'Tidak Hadir')}
-                        disabled={submitting === form.id}
-                        className="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-red-600 disabled:bg-red-300 transition"
-                    >
-                        {submitting === form.id ? 'Loading...' : 'Tidak Hadir'}
-                    </button>
+                   
                     </div>
                 )}
                 </div>

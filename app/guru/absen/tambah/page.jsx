@@ -18,8 +18,8 @@ export default function TambahAbsenPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startTime, setStartTime] = useState('07:00'); // Default to 07:00
+  const [endTime, setEndTime] = useState('14:00');     // Default to 14:00 (7 hours after start)
 
   useEffect(() => {
     const checkUser = async () => {
@@ -31,7 +31,7 @@ export default function TambahAbsenPage() {
 
       const { data: profile, error } = await supabase
         .from('users')
-        .select('role, class_id, classes(name)')
+        .select('role, class_id, classes(name), id') // Select 'id' as well to get created_by
         .eq('id', session.user.id)
         .single();
 
@@ -51,8 +51,8 @@ export default function TambahAbsenPage() {
     setError('');
     setMessage('');
 
-    if (!title || !date || !startTime || !endTime) {
-      setError('Semua kolom wajib diisi.');
+    if (!title || !date) {
+      setError('Judul dan Tanggal wajib diisi.');
       setLoading(false);
       return;
     }
@@ -63,6 +63,25 @@ export default function TambahAbsenPage() {
       return;
     }
     
+    // Check if an attendance form for this date already exists for this guru
+    const { data: existingForms, error: checkError } = await supabase
+      .from('attendance_forms')
+      .select('id')
+      .eq('created_by', userData.id)
+      .eq('date', date);
+
+    if (checkError) {
+      setError('Gagal memeriksa absensi yang ada: ' + checkError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (existingForms && existingForms.length > 0) {
+      setError('Anda sudah membuat form absensi untuk tanggal ini.');
+      setLoading(false);
+      return;
+    }
+
     const { error: insertError } = await supabase.from('attendance_forms').insert({
       title,
       description,
@@ -95,7 +114,6 @@ export default function TambahAbsenPage() {
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-900 mb-1">Judul Absensi</label>
-            {/* *** PERUBAHAN DI SINI *** */}
             <input
               type="text"
               id="title"
@@ -108,7 +126,6 @@ export default function TambahAbsenPage() {
           </div>
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-900 mb-1">Deskripsi (Opsional)</label>
-             {/* *** PERUBAHAN DI SINI *** */}
             <textarea
               id="description"
               value={description}
@@ -120,7 +137,6 @@ export default function TambahAbsenPage() {
           </div>
           <div>
               <label htmlFor="date" className="block text-sm font-medium text-gray-900 mb-1">Tanggal</label>
-               {/* *** PERUBAHAN DI SINI *** */}
               <input
                   type="date"
                   id="date"
@@ -133,25 +149,23 @@ export default function TambahAbsenPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                   <label htmlFor="start_time" className="block text-sm font-medium text-gray-900 mb-1">Jam Mulai</label>
-                   {/* *** PERUBAHAN DI SINI *** */}
                   <input
                       type="time"
                       id="start_time"
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900"
+                      readOnly // Make it read-only
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 bg-gray-100 cursor-not-allowed" // Add styling for read-only
                       required
                   />
               </div>
               <div>
                   <label htmlFor="end_time" className="block text-sm font-medium text-gray-900 mb-1">Jam Selesai</label>
-                   {/* *** PERUBAHAN DI SINI *** */}
                   <input
                       type="time"
                       id="end_time"
                       value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900"
+                      readOnly // Make it read-only
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 bg-gray-100 cursor-not-allowed" // Add styling for read-only
                       required
                   />
               </div>

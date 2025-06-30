@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // Import Link component if you plan to have student detail pages
 import { createClient } from '@/lib/supabaseClient';
 import { Calendar, Clock, Users, CheckCircle, XCircle, MapPin, AlertTriangle } from 'lucide-react';
 
@@ -181,13 +182,16 @@ export default function SiswaEkstraPage() {
   };
 
   // Fungsi untuk mengecek konflik jadwal
-  const hasScheduleConflict = (newSchedules) => {
+  const hasScheduleConflict = (extraId, newSchedules) => {
     // Jika tidak ada jadwal baru, tidak ada konflik
     if (!newSchedules || newSchedules.length === 0) {
       return false;
     }
 
-    const selectedScheduleIds = schedules.map(s => s.id);
+    // Jika ekstrakurikuler sudah dipilih, tidak ada konflik
+    if (isSelected(extraId)) {
+      return false;
+    }
     
     for (const newSchedule of newSchedules) {
       for (const existingSchedule of schedules) {
@@ -228,7 +232,7 @@ export default function SiswaEkstraPage() {
     // Cek konflik jadwal hanya jika ekstrakurikuler memiliki jadwal
     if (extraToSelect.extracurricular_schedules && 
         extraToSelect.extracurricular_schedules.length > 0) {
-      if (hasScheduleConflict(extraToSelect.extracurricular_schedules)) {
+      if (hasScheduleConflict(extraToSelect.id, extraToSelect.extracurricular_schedules)) {
         setMessage('Jadwal ekstrakurikuler ini bertabrakan dengan ekstrakurikuler yang sudah Anda pilih.');
         return;
       }
@@ -317,6 +321,12 @@ export default function SiswaEkstraPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
+        <Link href="/siswa/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Kembali ke Dashboard
+      </Link>
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Ekstrakurikuler</h1>
           <p className="text-gray-700 mb-4">
@@ -415,14 +425,14 @@ export default function SiswaEkstraPage() {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Ekstrakurikuler Tersedia</h2>
                 <div className="mb-4 text-sm text-gray-600">
-                  Debug: Total ekstrakurikuler tersedia: {availableExtras.length}
+                  Total ekstrakurikuler tersedia: {availableExtras.length}
                 </div>
                 {availableExtras.length > 0 ? (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {availableExtras.map(extra => {
                       const selected = isSelected(extra.id);
                       const hasSchedule = extra.extracurricular_schedules && extra.extracurricular_schedules.length > 0;
-                      const hasConflict = hasSchedule && hasScheduleConflict(extra.extracurricular_schedules);
+                      const hasConflict = hasSchedule && hasScheduleConflict(extra.id, extra.extracurricular_schedules);
                       
                       return (
                         <div key={extra.id} className={`border rounded-lg p-4 ${

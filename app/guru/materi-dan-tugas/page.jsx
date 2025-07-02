@@ -6,248 +6,134 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient'; // Sesuaikan path
 
-// Komponen utama untuk Materi & Tugas Kelas
 function MateriDanTugasContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const classId = searchParams.get('classId'); // Ambil classId dari URL
+  const classId = searchParams.get('classId');
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [assignments, setAssignments] = useState([]);
-  const [classMaterials, setClassMaterials] = useState([]); // State untuk materi kelas
+  const [userData, setUserData] = useState(null); // Data profil guru
+  const [mapelData, setMapelData] = useState([]); // Data mata pelajaran dengan hitungan
   const [message, setMessage] = useState('');
 
-  const fetchData = async () => {
-    setLoading(true);
-    setMessage('');
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setMessage('');
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (!session || sessionError) {
+        router.push('/auth/signin');
+        return;
+      }
+      setUser(session.user);
 
-    if (!session || sessionError) {
-      router.push('/auth/signin');
-      return;
-    }
-    setUser(session.user);
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('name, role, classes(id, name)')
+        .eq('id', session.user.id)
+        .single();
 
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('name, role, classes(id, name)') // Ambil juga nama kelas
-      .eq('id', session.user.id)
-      .single();
+      if (profileError || (!['guru', 'super_admin'].includes(profile?.role))) {
+        setMessage('Akses ditolak: Anda tidak memiliki izin untuk melihat halaman ini.');
+        await supabase.auth.signOut();
+        router.push('/');
+        return;
+      }
+      setUserData(profile);
 
-    if (profileError || (!['guru', 'super_admin'].includes(profile?.role))) {
-      setMessage('Akses ditolak: Anda tidak memiliki izin untuk melihat halaman ini.');
-      await supabase.auth.signOut();
-      router.push('/');
-      return;
-    }
-    setUserData(profile);
+      if (profile.role === 'guru' && classId !== profile.classes?.id && classId) {
+          setMessage('Akses ditolak: Anda tidak memiliki izin untuk melihat kelas ini.');
+          setLoading(false);
+          return;
+      }
 
-    if (profile.role === 'guru' && classId !== profile.classes?.id && classId) { // Added classId check
-        setMessage('Akses ditolak: Anda tidak memiliki izin untuk melihat kelas ini.');
+      // Ambil semua mata pelajaran dari tabel 'mapel'
+      const { data: mapel, error: mapelError } = await supabase
+        .from('mapel') // Mengambil dari tabel 'mapel'
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (mapelError) {
+        setMessage('Error fetching mapel: ' + mapelError.message);
         setLoading(false);
         return;
-    }
+      }
 
-    // --- Ambil Data Materi Kelas ---
-    let queryMaterials = supabase
-        .from('class_materials')
-        .select('*, users!class_materials_created_by_fkey(name)') // Join untuk nama guru pembuat
-        .order('created_at', { ascending: false });
+      // Untuk setiap mata pelajaran, hitung jumlah materi dan tugas di kelas ini
+      const mapelWithCounts = await Promise.all(
+        mapel.map(async (m) => {
+          // Hitung materi
+          const { count: materialCount, error: materialError } = await supabase
+            .from('class_materials')
+            .select('id', { count: 'exact' })
+            .eq('mapel_id', m.id) // Filter berdasarkan mapel_id
+            .eq('class_id', classId); // Filter berdasarkan kelas yang dipilih
 
-    if (profile.role === 'guru') {
-      queryMaterials = queryMaterials.eq('created_by', session.user.id);
-    }
-    if (classId) {
-        queryMaterials = queryMaterials.eq('class_id', classId);
-    }
+          if (materialError) console.error(`Error counting materials for ${m.name}:`, materialError.message);
 
-    const { data: materials, error: materialsError } = await queryMaterials;
-    if (materialsError) {
-      console.error('Error fetching materials:', materialsError.message);
-      setMessage('Error fetching materials: ' + materialsError.message);
+          // Hitung tugas
+          const { count: assignmentCount, error: assignmentError } = await supabase
+            .from('assignments')
+            .select('id', { count: 'exact' })
+            .eq('mapel_id', m.id) // Filter berdasarkan mapel_id
+            .eq('class_id', classId); // Filter berdasarkan kelas yang dipilih
+
+          if (assignmentError) console.error(`Error counting assignments for ${m.name}:`, assignmentError.message);
+
+          return {
+            ...m,
+            materialCount: materialCount || 0,
+            assignmentCount: assignmentCount || 0,
+          };
+        })
+      );
+
+      setMapelData(mapelWithCounts);
       setLoading(false);
-      return;
-    }
-    setClassMaterials(materials || []);
-    // --- Akhir Pengambilan Data Materi Kelas ---
+    };
 
-
-    // --- Ambil Data Tugas dan Status Pengumpulan ---
-    let queryAssignments = supabase
-      .from('assignments')
-      .select('*, classes(name), users!assignments_created_by_fkey(name)') // Join to get class name and teacher name
-      .order('due_date', { ascending: true });
-
-    if (profile.role === 'guru') {
-      queryAssignments = queryAssignments.eq('created_by', session.user.id);
-    }
-    if (classId) {
-        queryAssignments = queryAssignments.eq('class_id', classId);
-    }
-
-    const { data: fetchedAssignments, error: assignmentsError } = await queryAssignments;
-
-    if (assignmentsError) {
-      setMessage('Error fetching assignments: ' + assignmentsError.message);
-      setLoading(false);
-      return;
-    }
-
-    const assignmentsWithDetails = await Promise.all(
-      fetchedAssignments.map(async (assignment) => {
-        const { data: studentsInClass, error: studentsError } = await supabase
-          .from('users')
-          .select('id, name')
-          .eq('role', 'siswa')
-          .eq('class_id', assignment.class_id);
-
-        if (studentsError) {
-          console.error(`Error fetching students for class ${assignment.class_id}:`, studentsError);
-          return { ...assignment, students: [], submission_summary: { submitted: 0, total: 0 } };
-        }
-
-        const { data: submissions, error: submissionsError } = await supabase
-          .from('student_submissions')
-          .select('user_id, submitted_at, is_finalized, grade')
-          .eq('assignment_id', assignment.id);
-
-        if (submissionsError) {
-          console.error(`Error fetching submissions for assignment ${assignment.id}:`, submissionsError);
-          return { ...assignment, students: studentsInClass, submission_summary: { submitted: 0, total: studentsInClass.length } };
-        }
-
-        const submittedStudentIds = new Set(submissions.map(s => s.user_id));
-        return {
-          ...assignment,
-          students: studentsInClass,
-          submission_summary: {
-            submitted: submittedStudentIds.size,
-            total: studentsInClass.length,
-          },
-        };
-      })
-    );
-    setAssignments(assignmentsWithDetails);
-    setLoading(false);
-  };
-
-  useEffect(() => {
     fetchData();
 
     // Real-time listeners
-    const assignmentChanges = supabase
-      .channel('guru_materi_tugas_assignments_changes')
+    const mapelChanges = supabase
+      .channel('guru_mapel_counts_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'class_materials', filter: classId ? `class_id=eq.${classId}` : undefined },
+        payload => { fetchData(); }
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'assignments', filter: classId ? `class_id=eq.${classId}` : undefined },
-        payload => {
-          console.log('Assignment change detected!', payload);
-          fetchData();
-        }
+        payload => { fetchData(); }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'student_submissions', filter: classId ? `assignment_id IN (SELECT id FROM assignments WHERE class_id=eq.${classId})` : undefined },
-        payload => {
-          console.log('Submission change detected!', payload);
-          fetchData();
-        }
-      )
-      .on( // NEW: Real-time listener for class_materials
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'class_materials', filter: classId ? `class_id=eq.${classId}` : undefined },
-        payload => {
-          console.log('Class material change detected!', payload);
-          fetchData(); // Re-fetch materials on change
-        }
+        { event: '*', schema: 'public', table: 'mapel' }, // Jika nama mapel berubah
+        payload => { fetchData(); }
       )
       .subscribe();
 
     return () => {
-      assignmentChanges.unsubscribe();
+      mapelChanges.unsubscribe();
     };
   }, [router, supabase, classId, user?.id]);
-
-  const handleDeleteAssignment = async (assignmentIdToDelete) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus tugas ini? Aksi ini tidak dapat dibatalkan.')) {
-      setLoading(true);
-      setMessage('');
-      try {
-        const { error } = await supabase
-          .from('assignments')
-          .delete()
-          .eq('id', assignmentIdToDelete)
-          .eq('created_by', user.id);
-
-        if (error) {
-          throw error;
-        }
-        setMessage('Tugas berhasil dihapus!');
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting assignment:', error.message);
-        setMessage('Gagal menghapus tugas: ' + error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleDeleteMaterial = async (materialIdToDelete, materialFileName) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus materi ini? Aksi ini tidak dapat dibatalkan.')) {
-      setLoading(true);
-      setMessage('');
-      try {
-        // Hapus file dari Supabase Storage jika ada
-        if (materialFileName) {
-            const filePath = `class_materials/${materialFileName}`; // Asumsi path sama seperti saat upload
-            const { error: storageError } = await supabase.storage
-                .from('attach') // Menggunakan bucket 'attach'
-                .remove([filePath]);
-            if (storageError) {
-                console.error('Error deleting material file from storage:', storageError);
-                setMessage('Gagal menghapus file materi dari storage.');
-            }
-        }
-
-        // Hapus dari tabel class_materials
-        const { error } = await supabase
-          .from('class_materials')
-          .delete()
-          .eq('id', materialIdToDelete)
-          .eq('created_by', user.id); // Pastikan hanya pembuat materi yang bisa menghapus
-
-        if (error) {
-          throw error;
-        }
-        setMessage('Materi berhasil dihapus!');
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting material:', error.message);
-        setMessage('Gagal menghapus materi: ' + error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-blue-600 text-lg">Memuat materi dan tugas kelas...</div>
+        <div className="text-blue-600 text-lg">Memuat daftar mata pelajaran...</div>
       </div>
     );
   }
 
   if (message) {
     return (
-      <div className="w-full bg-gray-100 min-h-screen"> {/* Pastikan kontainer div terluar tidak menyusut */}
+      <div className="w-full bg-gray-100 min-h-screen">
         <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
           <p className={`mb-4 p-3 rounded ${message.includes('Gagal') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
             {message}
@@ -260,123 +146,80 @@ function MateriDanTugasContent() {
   return (
     <div className="w-full bg-gray-100 min-h-screen">
       <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <Link href="/guru/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        Kembali ke Dashboard
-      </Link>
+        <Link href="/guru/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Kembali ke Dashboard
+        </Link>
 
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
-        Materi & Tugas Kelas {userData?.classes?.name ? `(${userData.classes.name})` : ''}
-      </h1>
-      <p className="text-gray-600 mb-6">
-        Kelola materi pembelajaran dan tugas untuk kelas Anda di sini.
-      </p>
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">
+          Materi & Tugas Kelas {userData?.classes?.name ? `(${userData.classes.name})` : ''}
+        </h1>
+        <p className="text-gray-600 mb-6">
+          Pilih mata pelajaran untuk melihat dan mengelola materi serta tugas.
+        </p>
 
-      {/* Bagian Materi Kelas */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4 flex justify-between items-center">
-          Materi Kelas
-          <Link href={`/guru/materi/tambah?classId=${classId || ''}`} className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm">
-            Tambah Materi Baru
-          </Link>
-        </h2>
-        {classMaterials.length === 0 ? (
-          <p className="text-gray-500">Belum ada materi kelas yang ditambahkan.</p>
+        {mapelData.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="mx-auto h-24 w-24 text-gray-400 mb-4">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium text-gray-500 mb-2">Belum Ada Mata Pelajaran</h3>
+            <p className="text-gray-400">Mata pelajaran belum tersedia untuk kelas ini.</p>
+          </div>
         ) : (
-          <div className="space-y-4">
-            {classMaterials.map(material => (
-              <div key={material.id} className="p-4 border border-gray-200 rounded-lg shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">{material.title}</h3>
-                    <p className="text-gray-600 text-sm">Mapel: {material.subject}</p>
-                    <p className="text-gray-600 text-sm">Dibuat oleh: {material.users?.name || 'N/A'}</p>
-                    <p className="text-gray-700 mt-2 text-sm">{material.description || 'Tidak ada deskripsi.'}</p>
-                    {material.file_url && (
-                        <a href={material.file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center text-blue-600 hover:underline text-sm">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                          Lihat File ({material.file_name})
-                        </a>
-                    )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {mapelData.map((m) => (
+              <Link
+                key={m.id}
+                href={`/guru/materi-dan-tugas/${m.id}?classId=${classId}`}
+                className="group block relative"
+              >
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 text-center transform hover:scale-105 hover:-translate-y-2 relative overflow-hidden">
+                  {/* Background decorative element */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-indigo-300/20 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-300"></div>
+                  
+                  {/* Book icon */}
+                  <div className="relative z-10 mx-auto h-16 w-16 text-blue-600 mb-6 group-hover:text-indigo-600 transition-colors duration-300">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {/* Tombol Edit Materi (jika ada halaman edit materi) */}
-                    {/* <Link href={`/guru/materi/edit/${material.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      Edit
-                    </Link> */}
-                    {/* Tombol Hapus Materi */}
-                    <button
-                      onClick={() => handleDeleteMaterial(material.id, material.file_name)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      disabled={loading}
-                    >
-                      Hapus
-                    </button>
+                  
+                  <h2 className="relative z-10 text-2xl font-bold text-gray-800 mb-4 group-hover:text-indigo-800 transition-colors duration-300">{m.name}</h2>
+                  
+                  <div className="relative z-10 flex justify-center space-x-6 mb-4">
+                    <div className="text-center">
+                      <div className="bg-green-100 text-green-700 rounded-full px-4 py-2 text-sm font-bold mb-1 group-hover:bg-green-200 transition-colors duration-300">
+                        {m.materialCount}
+                      </div>
+                      <p className="text-xs text-gray-600 font-medium">Materi</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="bg-orange-100 text-orange-700 rounded-full px-4 py-2 text-sm font-bold mb-1 group-hover:bg-orange-200 transition-colors duration-300">
+                        {m.assignmentCount}
+                      </div>
+                      <p className="text-xs text-gray-600 font-medium">Tugas</p>
+                    </div>
+                  </div>
+                  
+                  {/* Arrow indicator */}
+                  <div className="relative z-10 mt-4 flex justify-center">
+                    <div className="bg-blue-600 text-white rounded-full p-2 group-hover:bg-indigo-600 transition-colors duration-300">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
       </div>
-
-      {/* Bagian Daftar Tugas */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4 flex justify-between items-center">
-          Daftar Tugas
-          <Link href={`/guru/tugas/tambah?classId=${classId || ''}`} className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm">
-            Tambah Tugas Baru
-          </Link>
-        </h2>
-        {assignments.length === 0 ? (
-          <p className="text-gray-500">Belum ada tugas yang diberikan untuk kelas ini.</p>
-        ) : (
-          <div className="space-y-4">
-            {assignments.map((assignment) => (
-              <div key={assignment.id} className="p-4 border border-gray-200 rounded-lg shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">{assignment.title}</h3>
-                    <p className="text-gray-600 text-sm">Mapel: {assignment.subject} | Kelas: {assignment.classes?.name || 'N/A'}</p>
-                    <p className="text-gray-600 text-sm">Tenggat: {new Date(assignment.due_date).toLocaleString()}</p>
-                    <p className="text-gray-600 text-sm">Dibuat oleh: {assignment.users?.name || 'N/A'}</p>
-                    <p className="text-gray-700 mt-2">{assignment.description}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {/* Tombol Edit */}
-                    <Link href={`/guru/tugas/edit/${assignment.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      Edit
-                    </Link>
-                    {/* Tombol Hapus */}
-                    <button
-                      onClick={() => handleDeleteAssignment(assignment.id)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      disabled={loading}
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <h4 className="text-md font-semibold text-gray-700 mb-2">Status Pengumpulan:</h4>
-                  <p className="text-sm text-gray-700">
-                    {assignment.submission_summary.submitted} dari {assignment.submission_summary.total} siswa sudah mengumpulkan.
-                  </p>
-                  <Link href={`/guru/tugas/lihat-pengumpulan/${assignment.id}`} className="mt-3 inline-block bg-teal-500 text-white px-4 py-2 rounded-md text-sm hover:bg-teal-600 transition-colors">
-                    Lihat Siapa Saja yang Mengumpulkan
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
     </div>
   );
 }
@@ -385,7 +228,7 @@ export default function MateriDanTugasPage() {
   return (
     <Suspense fallback={
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="text-blue-600 text-lg">Memuat halaman materi dan tugas...</div>
+            <div className="text-blue-600 text-lg">Memuat halaman mata pelajaran...</div>
         </div>
     }>
       <MateriDanTugasContent />

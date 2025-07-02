@@ -12,7 +12,8 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
   const searchParams = useSearchParams(); // Hook ini sekarang aman di dalam Suspense
   const supabase = createClient();
 
-  const initialClassId = searchParams.get('classId') || ''; // Ambil classId dari URL
+  const initialClassId = searchParams.get('classId') || '';
+  const initialMapelId = searchParams.get('mapelId') || ''; // Ambil mapelId dari URL
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -20,14 +21,15 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [subject, setSubject] = useState('');
-  const [selectedClassId, setSelectedClassId] = useState(initialClassId); // Set initial classId
-  const [dueDate, setDueDate] = useState(''); // Ini adalah string dari input datetime-local
+  const [selectedMapelId, setSelectedMapelId] = useState(initialMapelId); // State untuk mapel_id
+  const [selectedClassId, setSelectedClassId] = useState(initialClassId);
+  const [dueDate, setDueDate] = useState('');
   const [files, setFiles] = useState([]);
-  const [classList, setClassList] = useState([]); // List of classes the guru teaches
+  const [classList, setClassList] = useState([]);
+  const [mapelName, setMapelName] = useState(''); // State untuk menampilkan nama mapel
 
   useEffect(() => {
-    const checkUserAndFetchClasses = async () => {
+    const checkUserAndFetchData = async () => {
       setLoading(true);
       setMessage('');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -78,11 +80,31 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
         return;
       }
       setClassList(classesData);
+
+      // Ambil nama mata pelajaran jika mapelId ada di URL
+      if (initialMapelId) {
+        const { data: mapel, error: mapelError } = await supabase
+          .from('mapel')
+          .select('name')
+          .eq('id', initialMapelId)
+          .single();
+        if (mapelError) {
+          setMessage('Error fetching mapel name: ' + mapelError.message);
+          setLoading(false);
+          return;
+        }
+        setMapelName(mapel.name);
+      } else {
+        setMessage('ID Mata Pelajaran tidak ditemukan di URL.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
     };
 
-    checkUserAndFetchClasses();
-  }, [router, supabase, initialClassId]);
+    checkUserAndFetchData();
+  }, [router, supabase, initialClassId, initialMapelId]);
 
   const handleFileChange = (e) => {
     setFiles([...e.target.files]);
@@ -93,8 +115,9 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
     setLoading(true);
     setMessage('');
 
-    if (!title || !description || !subject || !selectedClassId || !dueDate) {
-      setMessage('Semua kolom wajib diisi, termasuk mata pelajaran, kelas, dan tanggal tenggat.');
+    // Pastikan mapelId sudah terisi (dari URL)
+    if (!title || !description || !selectedMapelId || !selectedClassId || !dueDate) {
+      setMessage('Semua kolom wajib diisi, termasuk judul, deskripsi, kelas, dan tanggal tenggat.');
       setLoading(false);
       return;
     }
@@ -116,7 +139,7 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
         .insert({
           title,
           description,
-          subject,
+          mapel_id: selectedMapelId, // Menggunakan mapel_id dari state
           class_id: selectedClassId,
           due_date: new Date(dueDate), // <-- PERUBAHAN UTAMA DI SINI
           created_by: user.id,
@@ -182,9 +205,7 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
       setMessage('Tugas berhasil ditambahkan!');
       setTitle('');
       setDescription('');
-      setSubject('');
-      // Keep selectedClassId if it's guru's assigned class, clear if super admin
-      if (userData?.role === 'super_admin') setSelectedClassId('');
+      // selectedMapelId dan selectedClassId tidak direset karena sudah dari URL atau profil guru
       setDueDate('');
       setFiles([]);
 
@@ -207,12 +228,12 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
   return (
     <div className="w-full bg-gray-100">
         <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      {/* Back button to Materi & Tugas Kelas, preserving classId */}
-      <Link href={`/guru/materi-dan-tugas?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+      {/* Back button to Materi & Tugas Kelas, preserving classId and mapelId */}
+      <Link href={`/guru/materi-dan-tugas/${selectedMapelId}?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        Kembali ke Materi & Tugas Kelas
+        Kembali ke Daftar Tugas
       </Link>
 
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Tambah Tugas Baru</h1>
@@ -252,18 +273,21 @@ function AddAssignmentContent() { // Ubah nama fungsi komponen utama
           ></textarea>
         </div>
 
+        {/* Bagian Mata Pelajaran (Sekarang hanya menampilkan teks) */}
         <div>
-          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="mapel" className="block text-sm font-medium text-gray-700 mb-1">
             Mata Pelajaran
           </label>
           <input
             type="text"
-            id="subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            required
+            id="mapel"
+            value={mapelName} // Menampilkan nama mapel
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
+            readOnly // Membuat input hanya bisa dibaca
+            disabled // Menonaktifkan input
           />
+          {/* Hidden input untuk memastikan mapel_id tetap terkirim */}
+          <input type="hidden" name="mapel_id" value={selectedMapelId} />
         </div>
 
         <div>

@@ -1,28 +1,34 @@
 // app/guru/tugas/tambah/page.jsx
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '../../../lib/supabaseClient'; // Adjust path as needed
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabaseClient'; // Sesuaikan path
 
-export default function AddAssignmentPage() {
+function AddAssignmentContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const initialClassId = searchParams.get('classId') || '';
+  const initialMapelId = searchParams.get('mapelId') || ''; // Ambil mapelId dari URL
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null); // To store guru's class info
+  const [userData, setUserData] = useState(null);
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [subject, setSubject] = useState('');
-  const [selectedClassId, setSelectedClassId] = useState(''); // Stores the class ID the assignment is for
+  const [selectedMapelId, setSelectedMapelId] = useState(initialMapelId); // State untuk mapel_id
+  const [selectedClassId, setSelectedClassId] = useState(initialClassId);
   const [dueDate, setDueDate] = useState('');
   const [files, setFiles] = useState([]);
-  const [classList, setClassList] = useState([]); // List of classes the guru teaches
+  const [classList, setClassList] = useState([]);
+  const [mapelName, setMapelName] = useState(''); // State untuk menampilkan nama mapel
 
   useEffect(() => {
-    const checkUserAndFetchClasses = async () => {
+    const checkUserAndFetchData = async () => {
       setLoading(true);
       setMessage('');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -31,7 +37,6 @@ export default function AddAssignmentPage() {
         router.push('/auth/signin');
         return;
       }
-
       setUser(session.user);
 
       const { data: profile, error: profileError } = await supabase
@@ -46,18 +51,14 @@ export default function AddAssignmentPage() {
         router.push('/');
         return;
       }
-
       setUserData(profile);
 
-      // Fetch classes the guru is associated with
-      // For a 'guru' role, it's typically one class. For 'super_admin', they might see all.
+      // Ambil daftar kelas
       let classesData;
       if (profile.role === 'guru' && profile.classes?.id) {
-        // If a regular guru, pre-select their class and make it read-only
         setSelectedClassId(profile.classes.id);
         classesData = [profile.classes];
       } else if (profile.role === 'super_admin') {
-        // Super admin can choose any class
         const { data: allClasses, error: allClassesError } = await supabase
           .from('classes')
           .select('id, name');
@@ -73,11 +74,31 @@ export default function AddAssignmentPage() {
         return;
       }
       setClassList(classesData);
+
+      // Ambil nama mata pelajaran jika mapelId ada di URL
+      if (initialMapelId) {
+        const { data: mapel, error: mapelError } = await supabase
+          .from('mapel')
+          .select('name')
+          .eq('id', initialMapelId)
+          .single();
+        if (mapelError) {
+          setMessage('Error fetching mapel name: ' + mapelError.message);
+          setLoading(false);
+          return;
+        }
+        setMapelName(mapel.name);
+      } else {
+        setMessage('ID Mata Pelajaran tidak ditemukan di URL.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
     };
 
-    checkUserAndFetchClasses();
-  }, [router, supabase]);
+    checkUserAndFetchData();
+  }, [router, supabase, initialClassId, initialMapelId]);
 
   const handleFileChange = (e) => {
     setFiles([...e.target.files]);
@@ -88,8 +109,9 @@ export default function AddAssignmentPage() {
     setLoading(true);
     setMessage('');
 
-    if (!title || !description || !subject || !selectedClassId || !dueDate) {
-      setMessage('Semua kolom wajib diisi, termasuk mata pelajaran, kelas, dan tanggal tenggat.');
+    // Pastikan mapelId sudah terisi (dari URL)
+    if (!title || !description || !selectedMapelId || !selectedClassId || !dueDate) {
+      setMessage('Semua kolom wajib diisi, termasuk judul, deskripsi, kelas, dan tanggal tenggat.');
       setLoading(false);
       return;
     }
@@ -101,15 +123,14 @@ export default function AddAssignmentPage() {
     }
 
     try {
-      // 1. Insert assignment into 'assignments' table
       const { data: assignment, error: assignmentError } = await supabase
         .from('assignments')
         .insert({
           title,
           description,
-          subject,
+          mapel_id: selectedMapelId, // Menggunakan mapel_id dari state
           class_id: selectedClassId,
-          due_date: dueDate,
+          due_date: new Date(dueDate),
           created_by: user.id,
         })
         .select()
@@ -119,30 +140,25 @@ export default function AddAssignmentPage() {
         throw assignmentError;
       }
 
-      // 2. Upload files to Supabase Storage and record in 'assignment_files'
       const uploadedFileDetails = [];
       for (const file of files) {
-        const fileExtension = file.name.split('.').pop();
-        const path = `assignment_files/${assignment.id}/${Date.now()}_${file.name}`; // Unique path
+        const path = `assignment_files/${assignment.id}/${Date.now()}_${file.name}`;
 
-        // --- Perubahan di sini: Menggunakan nama bucket 'attach' ---
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('attach') // Menggunakan bucket 'attach'
+          .from('attach')
           .upload(path, file, {
             cacheControl: '3600',
             upsert: false,
           });
 
         if (uploadError) {
-          console.error('Error uploading file:', JSON.stringify(uploadError, null, 2)); // Debugging lebih baik
+          console.error('Error uploading file:', JSON.stringify(uploadError, null, 2));
           setMessage((prev) => prev + ` Gagal mengunggah file ${file.name}: ${uploadError.message || 'Error tidak diketahui'}.`);
-          continue; // Continue with other files
+          continue;
         }
 
-        // Get public URL for the uploaded file
-        // --- Perubahan di sini: Menggunakan nama bucket 'attach' ---
         const { data: publicUrlData } = supabase.storage
-          .from('attach') // Menggunakan bucket 'attach'
+          .from('attach')
           .getPublicUrl(path);
 
         if (!publicUrlData || publicUrlData.error) {
@@ -173,9 +189,7 @@ export default function AddAssignmentPage() {
       setMessage('Tugas berhasil ditambahkan!');
       setTitle('');
       setDescription('');
-      setSubject('');
-      // Keep selectedClassId if it's guru's assigned class, clear if super admin
-      if (userData?.role === 'super_admin') setSelectedClassId('');
+      // selectedMapelId dan selectedClassId tidak direset karena sudah dari URL atau profil guru
       setDueDate('');
       setFiles([]);
 
@@ -196,13 +210,16 @@ export default function AddAssignmentPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <button
-        className="mb-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-        onClick={() => router.push('/guru/dashboard')}
-      >
-        &larr; Kembali ke Dashboard
-      </button>
+    <div className="w-full bg-gray-100 min-h-screen">
+        <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
+      {/* Back button to Materi & Tugas Kelas, preserving classId and mapelId */}
+      <Link href={`/guru/materi-dan-tugas/${selectedMapelId}?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Kembali ke Daftar Tugas
+      </Link>
+
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Tambah Tugas Baru</h1>
 
       {message && (
@@ -221,7 +238,7 @@ export default function AddAssignmentPage() {
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
           />
         </div>
@@ -235,23 +252,26 @@ export default function AddAssignmentPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows="5"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
           ></textarea>
         </div>
 
+        {/* Bagian Mata Pelajaran (Sekarang hanya menampilkan teks) */}
         <div>
-          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="mapel" className="block text-sm font-medium text-gray-700 mb-1">
             Mata Pelajaran
           </label>
           <input
             type="text"
-            id="subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            required
+            id="mapel"
+            value={mapelName} // Menampilkan nama mapel
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
+            readOnly // Membuat input hanya bisa dibaca
+            disabled // Menonaktifkan input
           />
+          {/* Hidden input untuk memastikan mapel_id tetap terkirim */}
+          <input type="hidden" name="mapel_id" value={selectedMapelId} />
         </div>
 
         <div>
@@ -262,9 +282,9 @@ export default function AddAssignmentPage() {
             id="class"
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
-            disabled={userData?.role === 'guru' && userData?.classes?.id} // Disable if guru and class is set
+            disabled={userData?.role === 'guru' && userData?.classes?.id && selectedClassId === userData?.classes?.id}
           >
             <option value="">Pilih Kelas</option>
             {classList.map((cls) => (
@@ -284,7 +304,7 @@ export default function AddAssignmentPage() {
             id="dueDate"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             required
           />
         </div>
@@ -303,7 +323,7 @@ export default function AddAssignmentPage() {
                        file:text-sm file:font-semibold
                        file:bg-blue-50 file:text-blue-700
                        hover:file:bg-blue-100"
-            multiple // Allow multiple file selection
+            multiple
           />
           {files.length > 0 && (
             <p className="mt-2 text-sm text-gray-600">
@@ -321,5 +341,18 @@ export default function AddAssignmentPage() {
         </button>
       </form>
     </div>
+    </div>
+  );
+}
+
+export default function AddAssignmentPageWrapper() {
+  return (
+    <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="text-blue-600 text-lg">Memuat halaman tambah tugas...</div>
+        </div>
+    }>
+      <AddAssignmentContent />
+    </Suspense>
   );
 }

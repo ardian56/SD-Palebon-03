@@ -13,11 +13,11 @@ export default function SiswaTugasPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null); // Student's profile data
-  const [assignments, setAssignments] = useState([]);
+  const [mapelData, setMapelData] = useState([]); // Data mata pelajaran dengan tugas
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const fetchAssignments = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setMessage('');
 
@@ -49,56 +49,76 @@ export default function SiswaTugasPage() {
       console.log('Siswa Class ID:', profile.class_id); // Debug log
       console.log('Siswa Class Name:', profile.classes?.name); // Debug log
 
-      // Fetch assignments for the student's class
-      const { data: fetchedAssignments, error: assignmentsError } = await supabase
-        .from('assignments')
-        .select('*, assignment_files(file_url, file_name)') // Select assignment details and linked files
-        .eq('class_id', profile.class_id)
-        .order('due_date', { ascending: true }); // Order by due date
+      // Ambil semua mata pelajaran dari tabel 'mapel'
+      const { data: mapel, error: mapelError } = await supabase
+        .from('mapel') // Mengambil dari tabel 'mapel'
+        .select('*')
+        .order('name', { ascending: true });
 
-      if (assignmentsError) {
-        console.error('Error fetching assignments:', assignmentsError); // Debug log
-        setMessage('Error fetching assignments: ' + assignmentsError.message);
+      if (mapelError) {
+        setMessage('Error fetching mapel: ' + mapelError.message);
         setLoading(false);
         return;
       }
 
-      console.log('Fetched Assignments:', fetchedAssignments); // Debug log
-      if (fetchedAssignments.length === 0) {
-        console.log('No assignments found for this class.'); // Debug log
-      }
+      // Untuk setiap mata pelajaran, ambil tugas di kelas ini beserta status pengumpulan
+      const mapelWithAssignments = await Promise.all(
+        mapel.map(async (m) => {
+          // Ambil tugas untuk mapel ini di kelas siswa
+          const { data: assignments, error: assignmentsError } = await supabase
+            .from('assignments')
+            .select('*, assignment_files(file_url, file_name)') // Select assignment details and linked files
+            .eq('mapel_id', m.id) // Filter berdasarkan mapel_id
+            .eq('class_id', profile.class_id) // Filter berdasarkan kelas siswa
+            .order('due_date', { ascending: true }); // Order by due date
 
-
-      // For each assignment, check if the student has already submitted it
-      const assignmentsWithSubmissionStatus = await Promise.all(
-        fetchedAssignments.map(async (assignment) => {
-          const { data: submission, error: submissionError } = await supabase
-            .from('student_submissions')
-            .select('id')
-            .eq('assignment_id', assignment.id)
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (submissionError && submissionError.code !== 'PGRST116') { // PGRST116 means no row found
-            console.error('Error checking submission status for assignment', assignment.id, ':', submissionError);
-            // Don't block the UI, just log the error
+          if (assignmentsError) {
+            console.error(`Error fetching assignments for ${m.name}:`, assignmentsError.message);
+            return {
+              ...m,
+              assignments: [],
+              assignmentCount: 0,
+            };
           }
 
+          // Untuk setiap assignment, cek status pengumpulan siswa
+          const assignmentsWithSubmissionStatus = await Promise.all(
+            assignments.map(async (assignment) => {
+              const { data: submission, error: submissionError } = await supabase
+                .from('student_submissions')
+                .select('id')
+                .eq('assignment_id', assignment.id)
+                .eq('user_id', session.user.id)
+                .single();
+
+              if (submissionError && submissionError.code !== 'PGRST116') { // PGRST116 means no row found
+                console.error('Error checking submission status for assignment', assignment.id, ':', submissionError);
+                // Don't block the UI, just log the error
+              }
+
+              return {
+                ...assignment,
+                hasSubmitted: !!submission, // true if submission exists, false otherwise
+              };
+            })
+          );
+
           return {
-            ...assignment,
-            hasSubmitted: !!submission, // true if submission exists, false otherwise
+            ...m,
+            assignments: assignmentsWithSubmissionStatus,
+            assignmentCount: assignmentsWithSubmissionStatus.length,
           };
         })
       );
 
-      setAssignments(assignmentsWithSubmissionStatus);
+      // Filter hanya mapel yang memiliki tugas
+      const mapelWithAssignmentsFiltered = mapelWithAssignments.filter(m => m.assignmentCount > 0);
+
+      setMapelData(mapelWithAssignmentsFiltered);
       setLoading(false);
     };
 
-    // --- PERBAIKAN DI SINI ---
-    // Panggil fungsi fetchAssignments langsung.
-    // Hapus baris 'if (assignmentId) { fetchAssignmentAndSubmission(); }'
-    fetchAssignments();
+    fetchData();
 
 
     // Real-time listener for assignments relevant to the student's class
@@ -111,12 +131,12 @@ export default function SiswaTugasPage() {
           event: '*',
           schema: 'public',
           table: 'assignments',
-          // Perbarui filter ini agar lebih robust saat `class_id` mungkin belum ada saat pertama kali mount
+          // Filter untuk kelas siswa
           filter: `class_id=eq.${userData?.class_id || 'NULL'}` // Gunakan 'NULL' sebagai fallback
         },
         payload => {
           console.log('Assignment change received!', payload);
-          fetchAssignments(); // Re-fetch data on changes
+          fetchData(); // Re-fetch data on changes
         }
       )
       .on( // Also listen for new submissions
@@ -129,7 +149,7 @@ export default function SiswaTugasPage() {
         },
         payload => {
           console.log('New submission received!', payload);
-          fetchAssignments(); // Re-fetch to update submission status
+          fetchData(); // Re-fetch to update submission status
         }
       )
       .on( // And updates to submissions (e.g., teacher grades)
@@ -142,7 +162,19 @@ export default function SiswaTugasPage() {
         },
         payload => {
           console.log('Submission update received!', payload);
-          fetchAssignments(); // Re-fetch to update submission status or grade
+          fetchData(); // Re-fetch to update submission status or grade
+        }
+      )
+      .on( // Listen for mapel changes
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mapel'
+        },
+        payload => {
+          console.log('Mapel change received!', payload);
+          fetchData(); // Re-fetch to update mapel data
         }
       )
       .subscribe();
@@ -183,38 +215,84 @@ export default function SiswaTugasPage() {
 
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Tugas Anda</h1>
       <p className="text-gray-600 mb-6">
-        Halo <span className="font-medium">{userData?.name || 'Siswa'}</span>, berikut adalah daftar tugas untuk kelas Anda (<span className="font-medium">{userData?.classes?.name || 'Tidak ada kelas'}</span>).
+        Halo <span className="font-medium">{userData?.name || 'Siswa'}</span>, berikut adalah daftar tugas untuk kelas Anda (<span className="font-medium">{userData?.classes?.name || 'Tidak ada kelas'}</span>), dikelompokkan per mata pelajaran.
       </p>
 
-      {assignments.length === 0 ? (
-        <p className="text-gray-500">Belum ada tugas yang diberikan untuk kelas Anda.</p>
+      {mapelData.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="mx-auto h-24 w-24 text-gray-400 mb-4">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+            </svg>
+          </div>
+          <h3 className="text-xl font-medium text-gray-500 mb-2">Belum Ada Tugas</h3>
+          <p className="text-gray-400">Tugas belum diberikan untuk kelas Anda.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assignments.map((assignment) => (
-            <div key={assignment.id} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">{assignment.title}</h2>
-              <p className="text-gray-600 text-sm mb-1">Mata Pelajaran: <span className="font-medium">{assignment.subject}</span></p>
-              <p className="text-gray-600 text-sm mb-3">Tenggat: <span className="font-medium">{new Date(assignment.due_date).toLocaleString()}</span></p>
-
-              {assignment.hasSubmitted ? (
-                <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-0.5 text-sm font-medium text-green-800">
-                  <svg className="-ml-1 mr-1.5 h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 8 8">
-                    <circle cx={4} cy={4} r={3} />
-                  </svg>
-                  Sudah Dikumpulkan
+        <div className="space-y-8">
+          {mapelData.map((mapel) => (
+            <div key={mapel.id} className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg p-8 relative overflow-hidden">
+              {/* Background decorative element */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-indigo-300/20 rounded-full -translate-y-16 translate-x-16"></div>
+              
+              <div className="relative z-10 flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="h-12 w-12 text-blue-600">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800">{mapel.name}</h2>
+                </div>
+                <span className="bg-blue-200 text-blue-800 text-sm font-bold px-4 py-2 rounded-full shadow-sm">
+                  {mapel.assignmentCount} Tugas
                 </span>
-              ) : (
-                <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-0.5 text-sm font-medium text-yellow-800">
-                  <svg className="-ml-1 mr-1.5 h-3 w-3 text-yellow-500" fill="currentColor" viewBox="0 0 8 8">
-                    <circle cx={4} cy={4} r={3} />
-                  </svg>
-                  Belum Dikumpulkan
-                </span>
-              )}
+              </div>
+              
+              <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {mapel.assignments.map((assignment) => (
+                  <div key={assignment.id} className="bg-white p-6 rounded-xl border hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-800 flex-1 mr-2">{assignment.title}</h3>
+                      <div className="h-6 w-6 text-orange-500 flex-shrink-0">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-600 text-sm mb-4">
+                      <span className="font-medium">Tenggat:</span> {new Date(assignment.due_date).toLocaleString()}
+                    </p>
 
-              <Link href={`/siswa/tugas/${assignment.id}`} className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
-                Lihat Detail & Kumpulkan
-              </Link>
+                    <div className="mb-4">
+                      {assignment.hasSubmitted ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+                          <svg className="-ml-1 mr-1.5 h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 8 8">
+                            <circle cx={4} cy={4} r={3} />
+                          </svg>
+                          Sudah Dikumpulkan
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
+                          <svg className="-ml-1 mr-1.5 h-3 w-3 text-yellow-500" fill="currentColor" viewBox="0 0 8 8">
+                            <circle cx={4} cy={4} r={3} />
+                          </svg>
+                          Belum Dikumpulkan
+                        </span>
+                      )}
+                    </div>
+
+                    <Link href={`/siswa/tugas/${assignment.id}`} className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-3 rounded-lg transition-colors duration-300 shadow-md hover:shadow-lg">
+                      <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Lihat Detail & Kumpulkan
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>

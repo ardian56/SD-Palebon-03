@@ -22,7 +22,8 @@ function EditTugasContent() {
   // State untuk form
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [subject, setSubject] = useState('');
+  const [selectedMapelId, setSelectedMapelId] = useState(''); // Ganti subject dengan selectedMapelId
+  const [mapelName, setMapelName] = useState(''); // State untuk menampilkan nama mapel
   const [selectedClassId, setSelectedClassId] = useState('');
   const [dueDate, setDueDate] = useState(''); // Ini masih string dari input datetime-local
   const [existingFiles, setExistingFiles] = useState([]); // File yang sudah ada
@@ -82,7 +83,7 @@ function EditTugasContent() {
       if (assignmentId) {
         const { data: fetchedAssignment, error: assignmentError } = await supabase
           .from('assignments')
-          .select('*, assignment_files(file_url, file_name, file_type)')
+          .select('*, assignment_files(id, file_url, file_name, file_type)')
           .eq('id', assignmentId)
           .single();
 
@@ -106,8 +107,20 @@ function EditTugasContent() {
         setAssignment(fetchedAssignment);
         setTitle(fetchedAssignment.title);
         setDescription(fetchedAssignment.description);
-        setSubject(fetchedAssignment.subject);
+        setSelectedMapelId(fetchedAssignment.mapel_id); // Update untuk menggunakan mapel_id
         setSelectedClassId(fetchedAssignment.class_id);
+
+        // Ambil nama mata pelajaran
+        if (fetchedAssignment.mapel_id) {
+          const { data: mapel, error: mapelError } = await supabase
+            .from('mapel')
+            .select('name')
+            .eq('id', fetchedAssignment.mapel_id)
+            .single();
+          if (!mapelError) {
+            setMapelName(mapel.name);
+          }
+        }
 
         // --- PERBAIKAN DI SINI: Format tanggal untuk input datetime-local agar sesuai zona waktu lokal ---
         const dbDueDate = fetchedAssignment.due_date ? new Date(fetchedAssignment.due_date) : null;
@@ -142,7 +155,7 @@ function EditTugasContent() {
             setAssignment(payload.new);
             setTitle(payload.new.title);
             setDescription(payload.new.description);
-            setSubject(payload.new.subject);
+            setSelectedMapelId(payload.new.mapel_id); // Update untuk menggunakan mapel_id
             setSelectedClassId(payload.new.class_id);
             // Update due date in real-time listeners as well
             const dbDueDate = payload.new.due_date ? new Date(payload.new.due_date) : null;
@@ -161,9 +174,18 @@ function EditTugasContent() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'assignment_files', filter: `assignment_id=eq.${assignmentId}` },
-        payload => {
+        async payload => {
             console.log('Assignment files change received!', payload);
-            fetchData();
+            // Refresh assignment files
+            const { data: updatedAssignment, error: fetchError } = await supabase
+              .from('assignments')
+              .select('*, assignment_files(id, file_url, file_name, file_type)')
+              .eq('id', assignmentId)
+              .single();
+            if (!fetchError) {
+              setAssignment(updatedAssignment);
+              setExistingFiles(updatedAssignment.assignment_files || []);
+            }
         }
       )
       .subscribe();
@@ -220,7 +242,7 @@ function EditTugasContent() {
     setLoading(true);
     setMessage('');
 
-    if (!title || !description || !subject || !selectedClassId || !dueDate) {
+    if (!title || !description || !selectedMapelId || !selectedClassId || !dueDate) {
       setMessage('Semua kolom wajib diisi, termasuk mata pelajaran, kelas, dan tanggal tenggat.');
       setLoading(false);
       return;
@@ -238,7 +260,7 @@ function EditTugasContent() {
         .update({
           title,
           description,
-          subject,
+          mapel_id: selectedMapelId, // Update untuk menggunakan mapel_id
           class_id: selectedClassId,
           due_date: new Date(dueDate), // Fix: Convert string to Date object for saving
         })
@@ -300,7 +322,7 @@ function EditTugasContent() {
       setNewFiles([]);
       const { data: updatedAssignment, error: fetchError } = await supabase
           .from('assignments')
-          .select('*, assignment_files(file_url, file_name, file_type)')
+          .select('*, assignment_files(id, file_url, file_name, file_type)')
           .eq('id', assignmentId)
           .single();
       if (!fetchError) {
@@ -330,8 +352,8 @@ function EditTugasContent() {
         <p className="mb-4 p-3 rounded bg-red-100 text-red-700">
           {message}
         </p>
-        <Link href={`/guru/materi-dan-tugas?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4">
-            &larr; Kembali ke Materi & Tugas Kelas
+        <Link href={`/guru/materi-dan-tugas/${selectedMapelId}?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4">
+            &larr; Kembali ke Daftar Tugas
         </Link>
       </div>
     );
@@ -344,11 +366,11 @@ function EditTugasContent() {
   return (
     <div className="w-full bg-gray-100">
       <div className="container mx-auto p-4 md:p-8 max-w-4xl font-sans">
-      <Link href={`/guru/materi-dan-tugas?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+      <Link href={`/guru/materi-dan-tugas/${selectedMapelId}?classId=${selectedClassId}`} className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        Kembali ke Materi & Tugas Kelas
+        Kembali ke Daftar Tugas
       </Link>
 
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Edit Tugas: "{assignment.title}"</h1>
@@ -388,18 +410,21 @@ function EditTugasContent() {
           ></textarea>
         </div>
 
+        {/* Bagian Mata Pelajaran (Sekarang hanya menampilkan teks) */}
         <div>
-          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="mapel" className="block text-sm font-medium text-gray-700 mb-1">
             Mata Pelajaran
           </label>
           <input
             type="text"
-            id="subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            required
+            id="mapel"
+            value={mapelName} // Menampilkan nama mapel
+            className="mt-1 block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
+            readOnly // Membuat input hanya bisa dibaca
+            disabled // Menonaktifkan input
           />
+          {/* Hidden input untuk memastikan mapel_id tetap terkirim */}
+          <input type="hidden" name="mapel_id" value={selectedMapelId} />
         </div>
 
         <div>

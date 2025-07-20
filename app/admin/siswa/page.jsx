@@ -39,7 +39,13 @@ export default function AdminSiswaPage() {
 
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name, email, role, photo_url, extracurricular_finalized, classes(id, name), class_id')
+        .select(`
+          id, name, email, role, photo_url, extracurricular_finalized, classes(id, name), class_id,
+          student_extracurriculars(
+            extracurricular_id,
+            extracurriculars(name)
+          )
+        `)
         .eq('role', 'siswa')
         .order('name', { ascending: true });
 
@@ -324,6 +330,7 @@ export default function AdminSiswaPage() {
               <th className="px-4 py-3 border border-gray-700 text-left">Email</th>
               <th className="px-4 py-3 border border-gray-700 text-left">Kelas</th>
               <th className="px-4 py-3 border border-gray-700 text-center">Status Ekstra</th>
+              <th className="px-4 py-3 border border-gray-700 text-left">Ekstrakurikuler</th>
               <th className="px-4 py-3 border border-gray-700 text-center">Foto</th>
               <th className="px-4 py-3 border border-gray-700 text-center">Aksi</th>
             </tr>
@@ -331,7 +338,7 @@ export default function AdminSiswaPage() {
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan="6" className="text-center text-gray-400 py-4">Belum ada data siswa.</td>
+                <td colSpan="7" className="text-center text-gray-400 py-4">Belum ada data siswa.</td>
               </tr>
             ) : (
               filteredData.map((item, index) => (
@@ -347,6 +354,21 @@ export default function AdminSiswaPage() {
                     }`}>
                       {item.extracurricular_finalized ? 'Sudah Difinalisasi' : 'Belum Difinalisasi'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 border border-gray-700 align-top">
+                    {item.extracurricular_finalized && item.student_extracurriculars && item.student_extracurriculars.length > 0 ? (
+                      <div className="space-y-1">
+                        {item.student_extracurriculars.map((se, idx) => (
+                          <span key={idx} className="inline-block bg-blue-600 text-blue-100 px-2 py-1 rounded text-xs mr-1 mb-1">
+                            {se.extracurriculars?.name || 'Tidak diketahui'}
+                          </span>
+                        ))}
+                      </div>
+                    ) : item.extracurricular_finalized ? (
+                      <span className="text-gray-400 text-xs italic">Tidak ada ekstrakurikuler</span>
+                    ) : (
+                      <span className="text-gray-400 text-xs italic">Belum finalisasi</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 border border-gray-700 text-center">
                     {item.photo_url ? (

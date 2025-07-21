@@ -104,20 +104,24 @@ export default function AdminEkstraPage() {
       // Check for schedule conflicts with other extracurriculars
       const { data: existingSchedules, error: checkError } = await supabase
         .from('extracurricular_schedules')
-        .select('*')
+        .select('extracurricular_id, start_time, end_time, extracurriculars(name)')
         .eq('day_of_week', formData.day_of_week)
         .neq('extracurricular_id', editingEkstra?.id || 0);
 
       if (checkError) {
         console.error('Error checking schedule conflicts:', checkError);
       } else {
-        const hasTimeConflict = existingSchedules.some(schedule => {
+        const conflictingSchedules = existingSchedules.filter(schedule => {
           return (formData.start_time < schedule.end_time && formData.end_time > schedule.start_time);
         });
 
-        if (hasTimeConflict) {
-          showAlert('Jadwal bentrok dengan ekstrakurikuler lain pada hari yang sama', 'error');
-          return;
+        if (conflictingSchedules.length > 0) {
+          const conflictNames = conflictingSchedules.map(s => s.extracurriculars?.name || 'Tidak diketahui').join(', ');
+          const confirmMessage = `Jadwal bentrok dengan ekstrakurikuler: ${conflictNames}\n\nApakah Anda yakin ingin melanjutkan?`;
+          
+          if (!confirm(confirmMessage)) {
+            return; // Cancel saving if user clicks "Cancel"
+          }
         }
       }
     }
@@ -288,7 +292,8 @@ export default function AdminEkstraPage() {
       {alert && (
         <div className={`fixed top-4 right-4 p-4 rounded-lg z-50 ${
           alert.type === 'success' ? 'bg-green-600' : 
-          alert.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+          alert.type === 'error' ? 'bg-red-600' : 
+          alert.type === 'warning' ? 'bg-yellow-600' : 'bg-blue-600'
         }`}>
           {alert.message}
         </div>
@@ -416,7 +421,7 @@ export default function AdminEkstraPage() {
 
               {/* Schedule Section */}
               <div className="border-t border-gray-600 pt-4">
-                <h4 className="text-lg font-medium text-gray-300 mb-3">Jadwal (Opsional)</h4>
+                <h4 className="text-lg font-medium text-gray-300 mb-3">Jadwal</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -472,9 +477,6 @@ export default function AdminEkstraPage() {
                     />
                   </div>
                 </div>
-                <p className="text-sm text-gray-400 mt-2">
-                  Jadwal dapat diisi nanti atau dibiarkan kosong jika belum ditentukan
-                </p>
               </div>
 
               <div className="flex gap-2 pt-2">
